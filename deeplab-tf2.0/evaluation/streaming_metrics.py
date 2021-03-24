@@ -34,22 +34,22 @@ _EPSILON = 1e-10
 
 def _realdiv_maybe_zero(x, y):
   """Support tf.realdiv(x, y) where y may contain zeros."""
-  return tf.where(tf.less(y, _EPSILON), tf.zeros_like(x), tf.realdiv(x, y))
+  return tf.compat.v1.where(tf.less(y, _EPSILON), tf.zeros_like(x), tf.realdiv(x, y))
 
 
 def _running_total(value, shape, name=None):
   """Maintains a running total of tensor `value` between calls."""
-  with tf.variable_scope(name, 'running_total', [value]):
-    total_var = tf.get_variable(
+  with tf.compat.v1.variable_scope(name, 'running_total', [value]):
+    total_var = tf.compat.v1.get_variable(
         'total',
         shape,
         value.dtype,
-        initializer=tf.zeros_initializer(),
+        initializer=tf.compat.v1.zeros_initializer(),
         trainable=False,
         collections=[
-            tf.GraphKeys.LOCAL_VARIABLES, tf.GraphKeys.METRIC_VARIABLES
+            tf.compat.v1.GraphKeys.LOCAL_VARIABLES, tf.compat.v1.GraphKeys.METRIC_VARIABLES
         ])
-    updated_total = tf.assign_add(total_var, value, use_locking=True)
+    updated_total = tf.compat.v1.assign_add(total_var, value, use_locking=True)
 
   return total_var, updated_total
 
@@ -107,14 +107,14 @@ def streaming_panoptic_quality(groundtruth_categories,
     raise RuntimeError('Cannot aggregate when eager execution is enabled.')
 
   input_args = [
-      tf.convert_to_tensor(groundtruth_categories, tf.uint16),
-      tf.convert_to_tensor(groundtruth_instances, tf.uint16),
-      tf.convert_to_tensor(predicted_categories, tf.uint16),
-      tf.convert_to_tensor(predicted_instances, tf.uint16),
-      tf.convert_to_tensor(num_classes, tf.int32),
-      tf.convert_to_tensor(max_instances_per_category, tf.int32),
-      tf.convert_to_tensor(ignored_label, tf.int32),
-      tf.convert_to_tensor(offset, tf.int32),
+      tf.convert_to_tensor(value=groundtruth_categories, dtype=tf.uint16),
+      tf.convert_to_tensor(value=groundtruth_instances, dtype=tf.uint16),
+      tf.convert_to_tensor(value=predicted_categories, dtype=tf.uint16),
+      tf.convert_to_tensor(value=predicted_instances, dtype=tf.uint16),
+      tf.convert_to_tensor(value=num_classes, dtype=tf.int32),
+      tf.convert_to_tensor(value=max_instances_per_category, dtype=tf.int32),
+      tf.convert_to_tensor(value=ignored_label, dtype=tf.int32),
+      tf.convert_to_tensor(value=offset, dtype=tf.int32),
   ]
   return_types = [
       tf.float64,
@@ -122,8 +122,8 @@ def streaming_panoptic_quality(groundtruth_categories,
       tf.float64,
       tf.float64,
   ]
-  with tf.variable_scope(name, 'streaming_panoptic_quality', input_args):
-    panoptic_results = tf.py_func(
+  with tf.compat.v1.variable_scope(name, 'streaming_panoptic_quality', input_args):
+    panoptic_results = tf.compat.v1.py_func(
         _panoptic_quality_helper, input_args, return_types, stateful=False)
     iou, tp, fn, fp = tuple(panoptic_results)
 
@@ -201,22 +201,22 @@ def streaming_parsing_covering(groundtruth_categories,
     raise RuntimeError('Cannot aggregate when eager execution is enabled.')
 
   input_args = [
-      tf.convert_to_tensor(groundtruth_categories, tf.uint16),
-      tf.convert_to_tensor(groundtruth_instances, tf.uint16),
-      tf.convert_to_tensor(predicted_categories, tf.uint16),
-      tf.convert_to_tensor(predicted_instances, tf.uint16),
-      tf.convert_to_tensor(num_classes, tf.int32),
-      tf.convert_to_tensor(max_instances_per_category, tf.int32),
-      tf.convert_to_tensor(ignored_label, tf.int32),
-      tf.convert_to_tensor(offset, tf.int32),
-      tf.convert_to_tensor(normalize_by_image_size, tf.bool),
+      tf.convert_to_tensor(value=groundtruth_categories, dtype=tf.uint16),
+      tf.convert_to_tensor(value=groundtruth_instances, dtype=tf.uint16),
+      tf.convert_to_tensor(value=predicted_categories, dtype=tf.uint16),
+      tf.convert_to_tensor(value=predicted_instances, dtype=tf.uint16),
+      tf.convert_to_tensor(value=num_classes, dtype=tf.int32),
+      tf.convert_to_tensor(value=max_instances_per_category, dtype=tf.int32),
+      tf.convert_to_tensor(value=ignored_label, dtype=tf.int32),
+      tf.convert_to_tensor(value=offset, dtype=tf.int32),
+      tf.convert_to_tensor(value=normalize_by_image_size, dtype=tf.bool),
   ]
   return_types = [
       tf.float64,
       tf.float64,
   ]
-  with tf.variable_scope(name, 'streaming_parsing_covering', input_args):
-    covering_results = tf.py_func(
+  with tf.compat.v1.variable_scope(name, 'streaming_parsing_covering', input_args):
+    covering_results = tf.compat.v1.py_func(
         _parsing_covering_helper, input_args, return_types, stateful=False)
     weighted_iou_per_class, gt_area_per_class = tuple(covering_results)
 

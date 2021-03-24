@@ -18,6 +18,7 @@
 
 import numpy as np
 import tensorflow as tf
+tf.compat.v1.disable_v2_behavior()
 
 from deeplab.utils import get_dataset_colormap
 

@@ -22,29 +22,31 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import slim as contrib_slim
-from tensorflow.contrib import training as contrib_training
-
+tf.compat.v1.disable_v2_behavior()
+# from tensorflow.contrib import framework as contrib_framework
+# from tensorflow.contrib import slim as contrib_slim
+# from tensorflow.contrib import training as contrib_training
+from tensorboard.plugins.hparams import api as hp
+import tf_slim as slim
 from deeplab.core import nas_genotypes
 from deeplab.core import nas_network
 
-arg_scope = contrib_framework.arg_scope
-slim = contrib_slim
+# arg_scope = contrib_framework.arg_scope
+# slim = contrib_slim
 
 
 def create_test_input(batch, height, width, channels):
   """Creates test input tensor."""
   if None in [batch, height, width, channels]:
-    return tf.placeholder(tf.float32, (batch, height, width, channels))
+    return tf.compat.v1.placeholder(tf.float32, (batch, height, width, channels))
   else:
-    return tf.to_float(
+    return tf.cast(
         np.tile(
             np.reshape(
                 np.reshape(np.arange(height), [height, 1]) +
                 np.reshape(np.arange(width), [1, width]),
                 [1, height, width, 1]),
-            [batch, 1, 1, channels]))
+            [batch, 1, 1, channels]), dtype=tf.float32)
 
 
 class NASNetworkTest(tf.test.TestCase):
@@ -58,7 +60,7 @@ class NASNetworkTest(tf.test.TestCase):
                output_stride=16,
                final_endpoint=None):
     """Build PNASNet model backbone."""
-    hparams = contrib_training.HParams(
+    hparams = hp.hparams(
         filter_scaling_rate=2.0,
         num_conv_filters=10,
         drop_path_keep_prob=1.0,
@@ -71,14 +73,14 @@ class NASNetworkTest(tf.test.TestCase):
                                   hparams.drop_path_keep_prob,
                                   len(backbone),
                                   hparams.total_training_steps)
-    with arg_scope([slim.dropout, slim.batch_norm], is_training=is_training):
+    with slim.arg_scope([slim.dropout, slim.batch_norm], is_training=is_training):
       return nas_network._build_nas_base(
           images,
           cell=cell,
           backbone=backbone,
           num_classes=num_classes,
           hparams=hparams,
-          reuse=tf.AUTO_REUSE,
+          reuse=tf.compat.v1.AUTO_REUSE,
           scope='pnasnet_small',
           final_endpoint=final_endpoint)
 

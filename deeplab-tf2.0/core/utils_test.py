@@ -17,6 +17,7 @@
 
 import numpy as np
 import tensorflow as tf
+tf.compat.v1.disable_v2_behavior()
 
 from deeplab.core import utils
 
@@ -61,7 +62,7 @@ class UtilsTest(tf.test.TestCase):
     ignore_label = 4
     num_classes = 5
 
-    self.assertRaisesWithRegexpMatch(
+    self.assertRaisesRegex(
         ValueError,
         '^The type of label_weights is invalid, it must be a float or a list',
         utils.get_label_weight_mask,
@@ -76,7 +77,7 @@ class UtilsTest(tf.test.TestCase):
     num_classes = 5
     label_weights = [0.0, 0.1, 0.2]
 
-    self.assertRaisesWithRegexpMatch(
+    self.assertRaisesRegex(
         ValueError,
         '^Length of label_weights must be equal to num_classes if it is a list',
         utils.get_label_weight_mask,

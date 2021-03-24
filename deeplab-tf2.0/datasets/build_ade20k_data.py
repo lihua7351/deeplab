@@ -26,29 +26,30 @@ import sys
 import build_data
 from six.moves import range
 import tensorflow as tf
+tf.compat.v1.disable_v2_behavior()
 
-FLAGS = tf.app.flags.FLAGS
+FLAGS = tf.compat.v1.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'train_image_folder',
     './ADE20K/ADEChallengeData2016/images/training',
     'Folder containing trainng images')
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'train_image_label_folder',
     './ADE20K/ADEChallengeData2016/annotations/training',
     'Folder containing annotations for trainng images')
 
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'val_image_folder',
     './ADE20K/ADEChallengeData2016/images/validation',
     'Folder containing validation images')
 
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'val_image_label_folder',
     './ADE20K/ADEChallengeData2016/annotations/validation',
     'Folder containing annotations for validation')
 
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'output_dir', './ADE20K/tfrecord',
     'Path to save converted tfrecord of Tensorflow example')
 
@@ -67,7 +68,7 @@ def _convert_dataset(dataset_split, dataset_dir, dataset_label_dir):
     RuntimeError: If loaded image and label have different shape.
   """
 
-  img_names = tf.gfile.Glob(os.path.join(dataset_dir, '*.jpg'))
+  img_names = tf.io.gfile.glob(os.path.join(dataset_dir, '*.jpg'))
   random.shuffle(img_names)
   seg_names = []
   for f in img_names:
@@ -87,7 +88,7 @@ def _convert_dataset(dataset_split, dataset_dir, dataset_label_dir):
     output_filename = os.path.join(
         FLAGS.output_dir,
         '%s-%05d-of-%05d.tfrecord' % (dataset_split, shard_id, _NUM_SHARDS))
-    with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+    with tf.io.TFRecordWriter(output_filename) as tfrecord_writer:
       start_idx = shard_id * num_per_shard
       end_idx = min((shard_id + 1) * num_per_shard, num_images)
       for i in range(start_idx, end_idx):
@@ -96,11 +97,11 @@ def _convert_dataset(dataset_split, dataset_dir, dataset_label_dir):
         sys.stdout.flush()
         # Read the image.
         image_filename = img_names[i]
-        image_data = tf.gfile.FastGFile(image_filename, 'rb').read()
+        image_data = tf.compat.v1.gfile.FastGFile(image_filename, 'rb').read()
         height, width = image_reader.read_image_dims(image_data)
         # Read the semantic segmentation annotation.
         seg_filename = seg_names[i]
-        seg_data = tf.gfile.FastGFile(seg_filename, 'rb').read()
+        seg_data = tf.compat.v1.gfile.FastGFile(seg_filename, 'rb').read()
         seg_height, seg_width = label_reader.read_image_dims(seg_data)
         if height != seg_height or width != seg_width:
           raise RuntimeError('Shape mismatched between image and label.')
@@ -113,11 +114,11 @@ def _convert_dataset(dataset_split, dataset_dir, dataset_label_dir):
 
 
 def main(unused_argv):
-  tf.gfile.MakeDirs(FLAGS.output_dir)
+  tf.io.gfile.makedirs(FLAGS.output_dir)
   _convert_dataset(
       'train', FLAGS.train_image_folder, FLAGS.train_image_label_folder)
   _convert_dataset('val', FLAGS.val_image_folder, FLAGS.val_image_label_folder)
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf.compat.v1.app.run()

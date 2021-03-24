@@ -29,15 +29,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+# import tensorflow.compat.v1 as tf
 import tensorflow as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import layers as contrib_layers
+tf.compat.v1.disable_v2_behavior()
+import tf_slim as slim
+# from tensorflow.contrib import framework as contrib_framework
+# from tensorflow.contrib import layers as contrib_layers
+from tf_slim.layers import initializers
+# from tensorflow.contrib.layers.python.layers import layers
+from tf_slim.layers import layers
+# from tensorflow.contrib.layers.python.layers import utils
+from tf_slim.layers import utils
+from tf_slim.ops.arg_scope import add_arg_scope
 
-from tensorflow.contrib.layers.python.layers import layers
-from tensorflow.contrib.layers.python.layers import utils
-
-
-class Conv2D(tf.keras.layers.Conv2D, tf.layers.Layer):
+class Conv2D(tf.keras.layers.Conv2D, tf.compat.v1.layers.Layer):
   """2D convolution layer (e.g. spatial convolution over images).
 
   This layer creates a convolution kernel that is convolved
@@ -57,7 +62,7 @@ class Conv2D(tf.keras.layers.Conv2D, tf.layers.Layer):
                activation=None,
                use_bias=True,
                kernel_initializer=None,
-               bias_initializer=tf.zeros_initializer(),
+               bias_initializer=tf.compat.v1.zeros_initializer(),
                kernel_regularizer=None,
                bias_regularizer=None,
                use_weight_standardization=False,
@@ -139,7 +144,7 @@ class Conv2D(tf.keras.layers.Conv2D, tf.layers.Layer):
 
   def call(self, inputs):
     if self.use_weight_standardization:
-      mean, var = tf.nn.moments(self.kernel, [0, 1, 2], keep_dims=True)
+      mean, var = tf.nn.moments(x=self.kernel, axes=[0, 1, 2], keepdims=True)
       kernel = (self.kernel - mean) / tf.sqrt(var + 1e-5)
       outputs = self._convolution_op(inputs, kernel)
     else:
@@ -161,7 +166,7 @@ class Conv2D(tf.keras.layers.Conv2D, tf.layers.Layer):
     return outputs
 
 
-@contrib_framework.add_arg_scope
+@add_arg_scope
 def conv2d(inputs,
            num_outputs,
            kernel_size,
@@ -172,9 +177,10 @@ def conv2d(inputs,
            activation_fn=tf.nn.relu,
            normalizer_fn=None,
            normalizer_params=None,
-           weights_initializer=contrib_layers.xavier_initializer(),
+          #  weights_initializer=contrib_layers.xavier_initializer(),
+           weights_initializer=initializers.xavier_initializer(),
            weights_regularizer=None,
-           biases_initializer=tf.zeros_initializer(),
+           biases_initializer=tf.compat.v1.zeros_initializer(),
            biases_regularizer=None,
            use_weight_standardization=False,
            reuse=None,
@@ -258,10 +264,10 @@ def conv2d(inputs,
       'kernel': 'weights'
   })
   # pylint: enable=protected-access
-  with tf.variable_scope(
+  with tf.compat.v1.variable_scope(
       scope, 'Conv', [inputs], reuse=reuse,
       custom_getter=layer_variable_getter) as sc:
-    inputs = tf.convert_to_tensor(inputs)
+    inputs = tf.convert_to_tensor(value=inputs)
     input_rank = inputs.get_shape().ndims
 
     if input_rank != 4:
@@ -357,8 +363,8 @@ def conv2d_same(inputs, num_outputs, kernel_size, stride, rate=1, scope=None):
     pad_total = kernel_size_effective - 1
     pad_beg = pad_total // 2
     pad_end = pad_total - pad_beg
-    inputs = tf.pad(inputs,
-                    [[0, 0], [pad_beg, pad_end], [pad_beg, pad_end], [0, 0]])
+    inputs = tf.pad(tensor=inputs,
+                    paddings=[[0, 0], [pad_beg, pad_end], [pad_beg, pad_end], [0, 0]])
     return conv2d(
         inputs,
         num_outputs,

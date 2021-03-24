@@ -25,26 +25,28 @@ import functools
 import numpy as np
 import six
 import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+tf.compat.v1.disable_v2_behavior()
+import tf_slim as slim
+# from tensorflow.contrib import slim as contrib_slim
 
 from deeplab.core import resnet_v1_beta
-from tensorflow.contrib.slim.nets import resnet_utils
-
-slim = contrib_slim
+# from tensorflow.contrib.slim.nets import resnet_utils
+from tf_slim.nets import resnet_utils
+# slim = contrib_slim
 
 
 def create_test_input(batch, height, width, channels):
   """Create test input tensor."""
   if None in [batch, height, width, channels]:
-    return tf.placeholder(tf.float32, (batch, height, width, channels))
+    return tf.compat.v1.placeholder(tf.float32, (batch, height, width, channels))
   else:
-    return tf.to_float(
+    return tf.cast(
         np.tile(
             np.reshape(
                 np.reshape(np.arange(height), [height, 1]) +
                 np.reshape(np.arange(width), [1, width]),
                 [1, height, width, 1]),
-            [batch, 1, 1, channels]))
+            [batch, 1, 1, channels]), dtype=tf.float32)
 
 
 class ResnetCompleteNetworkTest(tf.test.TestCase):
@@ -232,7 +234,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
       with slim.arg_scope(resnet_utils.resnet_arg_scope()):
         with tf.Graph().as_default():
           with self.test_session() as sess:
-            tf.set_random_seed(0)
+            tf.compat.v1.set_random_seed(0)
             inputs = create_test_input(2, 81, 81, 3)
             # Dense feature extraction followed by subsampling.
             output, _ = self._resnet_small_lite_bottleneck(
@@ -247,14 +249,14 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
               factor = nominal_stride // output_stride
             output = resnet_utils.subsample(output, factor)
             # Make the two networks use the same weights.
-            tf.get_variable_scope().reuse_variables()
+            tf.compat.v1.get_variable_scope().reuse_variables()
             # Feature extraction at the nominal network rate.
             expected, _ = self._resnet_small_lite_bottleneck(
                 inputs,
                 None,
                 is_training=False,
                 global_pool=False)
-            sess.run(tf.global_variables_initializer())
+            sess.run(tf.compat.v1.global_variables_initializer())
             self.assertAllClose(output.eval(), expected.eval(),
                                 atol=1e-4, rtol=1e-4)
 
@@ -275,7 +277,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                          [None, 1, 1, num_classes])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(logits, {inputs: images.eval()})
       self.assertEqual(output.shape, (batch, 1, 1, num_classes))
 
@@ -293,7 +295,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                          [batch, None, None, 8])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(output, {inputs: images.eval()})
       self.assertEqual(output.shape, (batch, 3, 3, 8))
 
@@ -313,7 +315,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                          [batch, None, None, 8])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(output, {inputs: images.eval()})
       self.assertEqual(output.shape, (batch, 9, 9, 8))
 
@@ -479,7 +481,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
       with slim.arg_scope(resnet_utils.resnet_arg_scope()):
         with tf.Graph().as_default():
           with self.test_session() as sess:
-            tf.set_random_seed(0)
+            tf.compat.v1.set_random_seed(0)
             inputs = create_test_input(2, 81, 81, 3)
             # Dense feature extraction followed by subsampling.
             output, _ = self._resnet_small(inputs,
@@ -493,13 +495,13 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
               factor = nominal_stride // output_stride
             output = resnet_utils.subsample(output, factor)
             # Make the two networks use the same weights.
-            tf.get_variable_scope().reuse_variables()
+            tf.compat.v1.get_variable_scope().reuse_variables()
             # Feature extraction at the nominal network rate.
             expected, _ = self._resnet_small(inputs,
                                              None,
                                              is_training=False,
                                              global_pool=False)
-            sess.run(tf.global_variables_initializer())
+            sess.run(tf.compat.v1.global_variables_initializer())
             self.assertAllClose(output.eval(), expected.eval(),
                                 atol=1e-4, rtol=1e-4)
 
@@ -519,7 +521,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                          [None, 1, 1, num_classes])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(logits, {inputs: images.eval()})
       self.assertEqual(output.shape, (batch, 1, 1, num_classes))
 
@@ -536,7 +538,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                          [batch, None, None, 32])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(output, {inputs: images.eval()})
       self.assertEqual(output.shape, (batch, 3, 3, 32))
 
@@ -555,7 +557,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                          [batch, None, None, 32])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(output, {inputs: images.eval()})
       self.assertEqual(output.shape, (batch, 9, 9, 32))
 

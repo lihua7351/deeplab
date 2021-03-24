@@ -32,13 +32,16 @@ The Example proto contains the following fields:
 import collections
 import six
 import tensorflow as tf
+# import tensorflow.compat.v1 as tf
+tf.compat.v1.disable_v2_behavior()
+FLAGS = tf.compat.v1.app.flags.FLAGS
 
-FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_enum('image_format', 'png', ['jpg', 'jpeg', 'png'],
+
+tf.compat.v1.app.flags.DEFINE_enum('image_format', 'png', ['jpg', 'jpeg', 'png'],
                          'Image format.')
 
-tf.app.flags.DEFINE_enum('label_format', 'png', ['png'],
+tf.compat.v1.app.flags.DEFINE_enum('label_format', 'png', ['png'],
                          'Segmentation label format.')
 
 # A map from image format to expected data format.
@@ -60,9 +63,9 @@ class ImageReader(object):
       channels: Image channels.
     """
     with tf.Graph().as_default():
-      self._decode_data = tf.placeholder(dtype=tf.string)
+      self._decode_data = tf.compat.v1.placeholder(dtype=tf.string)
       self._image_format = image_format
-      self._session = tf.Session()
+      self._session = tf.compat.v1.Session()
       if self._image_format in ('jpeg', 'jpg'):
         self._decode = tf.image.decode_jpeg(self._decode_data,
                                             channels=channels)

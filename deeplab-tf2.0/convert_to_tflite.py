@@ -19,6 +19,7 @@ from absl import flags
 import numpy as np
 from PIL import Image
 import tensorflow as tf
+tf.compat.v1.disable_v2_behavior()
 
 
 flags.DEFINE_string('quantized_graph_def_path', None,

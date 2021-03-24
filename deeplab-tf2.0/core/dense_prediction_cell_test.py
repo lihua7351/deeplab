@@ -21,7 +21,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-
+# import tensorflow.compat.v1 as tf
+tf.compat.v1.disable_v2_behavior()
 from deeplab.core import dense_prediction_cell
 
 
@@ -110,24 +111,24 @@ class DensePredictionCellTest(tf.test.TestCase):
 
   def testBuildCell(self):
     with self.test_session(graph=tf.Graph()) as sess:
-      features = tf.random_normal([2, 33, 33, 5])
+      features = tf.random.normal([2, 33, 33, 5])
       concat_logits = self.segmentation_layer.build_cell(
           features,
           output_stride=8,
           crop_size=[257, 257])
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       concat_logits = sess.run(concat_logits)
       self.assertTrue(concat_logits.any())
 
   def testBuildCellWithImagePoolingCropSize(self):
     with self.test_session(graph=tf.Graph()) as sess:
-      features = tf.random_normal([2, 33, 33, 5])
+      features = tf.random.normal([2, 33, 33, 5])
       concat_logits = self.segmentation_layer.build_cell(
           features,
           output_stride=8,
           crop_size=[257, 257],
           image_pooling_crop_size=[129, 129])
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       concat_logits = sess.run(concat_logits)
       self.assertTrue(concat_logits.any())
 

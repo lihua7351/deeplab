@@ -52,13 +52,14 @@ References:
 import collections
 import os.path
 import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+tf.compat.v1.disable_v2_behavior()
+# from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
+# slim = contrib_slim
+dataset = slim.data.dataset
+# dataset = slim.dataset
 
-slim = contrib_slim
-
-dataset = slim.dataset
-
-tfexample_decoder = slim.tfexample_decoder
+tfexample_decoder = slim.data.tfexample_decoder
 
 
 _ITEMS_TO_DESCRIPTIONS = {
@@ -156,19 +157,19 @@ def get_dataset(dataset_name, split_name, dataset_dir):
 
   # Specify how the TF-Examples are decoded.
   keys_to_features = {
-      'image/encoded': tf.FixedLenFeature(
+      'image/encoded': tf.io.FixedLenFeature(
           (), tf.string, default_value=''),
-      'image/filename': tf.FixedLenFeature(
+      'image/filename': tf.io.FixedLenFeature(
           (), tf.string, default_value=''),
-      'image/format': tf.FixedLenFeature(
+      'image/format': tf.io.FixedLenFeature(
           (), tf.string, default_value='jpeg'),
-      'image/height': tf.FixedLenFeature(
+      'image/height': tf.io.FixedLenFeature(
           (), tf.int64, default_value=0),
-      'image/width': tf.FixedLenFeature(
+      'image/width': tf.io.FixedLenFeature(
           (), tf.int64, default_value=0),
-      'image/segmentation/class/encoded': tf.FixedLenFeature(
+      'image/segmentation/class/encoded': tf.io.FixedLenFeature(
           (), tf.string, default_value=''),
-      'image/segmentation/class/format': tf.FixedLenFeature(
+      'image/segmentation/class/format': tf.io.FixedLenFeature(
           (), tf.string, default_value='png'),
   }
   items_to_handlers = {
@@ -190,7 +191,7 @@ def get_dataset(dataset_name, split_name, dataset_dir):
 
   return dataset.Dataset(
       data_sources=file_pattern,
-      reader=tf.TFRecordReader,
+      reader=tf.compat.v1.TFRecordReader,
       decoder=decoder,
       num_samples=splits_to_sizes[split_name],
       items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,

@@ -72,13 +72,14 @@ import build_data
 from six.moves import range
 import tensorflow as tf
 
-FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('cityscapes_root',
+FLAGS = tf.compat.v1.app.flags.FLAGS
+
+tf.compat.v1.app.flags.DEFINE_string('cityscapes_root',
                            './cityscapes',
                            'Cityscapes dataset root folder.')
 
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'output_dir',
     './tfrecord',
     'Path to save converted SSTable of TensorFlow examples.')
@@ -161,7 +162,7 @@ def _convert_dataset(dataset_split):
     shard_filename = '%s-%05d-of-%05d.tfrecord' % (
         dataset_split, shard_id, _NUM_SHARDS)
     output_filename = os.path.join(FLAGS.output_dir, shard_filename)
-    with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+    with tf.io.TFRecordWriter(output_filename) as tfrecord_writer:
       start_idx = shard_id * num_per_shard
       end_idx = min((shard_id + 1) * num_per_shard, num_images)
       for i in range(start_idx, end_idx):
@@ -169,10 +170,10 @@ def _convert_dataset(dataset_split):
             i + 1, num_images, shard_id))
         sys.stdout.flush()
         # Read the image.
-        image_data = tf.gfile.FastGFile(image_files[i], 'rb').read()
+        image_data = tf.compat.v1.gfile.FastGFile(image_files[i], 'rb').read()
         height, width = image_reader.read_image_dims(image_data)
         # Read the semantic segmentation annotation.
-        seg_data = tf.gfile.FastGFile(label_files[i], 'rb').read()
+        seg_data = tf.compat.v1.gfile.FastGFile(label_files[i], 'rb').read()
         seg_height, seg_width = label_reader.read_image_dims(seg_data)
         if height != seg_height or width != seg_width:
           raise RuntimeError('Shape mismatched between image and label.')
@@ -195,4 +196,4 @@ def main(unused_argv):
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf.compat.v1.app.run()

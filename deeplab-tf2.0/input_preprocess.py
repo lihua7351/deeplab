@@ -16,6 +16,8 @@
 
 """Prepares the data used for DeepLab training/evaluation."""
 import tensorflow as tf
+# import tensorflow.compat.v1 as tf
+tf.compat.v1.disable_v2_behavior()
 from deeplab.core import feature_extractor
 from deeplab.core import preprocess_utils
 
@@ -70,7 +72,7 @@ def preprocess_image_and_label(image,
   if is_training and label is None:
     raise ValueError('During training, label must be provided.')
   if model_variant is None:
-    tf.logging.warning('Default mean-subtraction is performed. Please specify '
+    tf.compat.v1.logging.warning('Default mean-subtraction is performed. Please specify '
                        'a model_variant. See feature_extractor.network_map for '
                        'supported model variants.')
 
@@ -104,7 +106,7 @@ def preprocess_image_and_label(image,
     processed_image.set_shape([None, None, 3])
 
   # Pad image and label to have dimensions >= [crop_height, crop_width]
-  image_shape = tf.shape(processed_image)
+  image_shape = tf.shape(input=processed_image)
   image_height = image_shape[0]
   image_width = image_shape[1]
 

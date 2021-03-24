@@ -35,19 +35,26 @@ from __future__ import division
 from __future__ import print_function
 
 from six.moves import range
+# import tensorflow.compat.v1 as tf
 import tensorflow as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import layers as contrib_layers
-from tensorflow.contrib import slim as contrib_slim
-from tensorflow.contrib import training as contrib_training
+tf.compat.v1.disable_v2_behavior()
+import tf_slim as slim
+# from tensorflow.contrib import framework as contrib_framework
+# from tensorflow.contrib import layers as contrib_layers
 
+# from tensorflow.contrib import slim as contrib_slim
+# from tensorflow.contrib import training as contrib_training
+from tensorboard.plugins.hparams import api as hp
 from deeplab.core import nas_genotypes
 from deeplab.core import utils
 from deeplab.core.nas_cell import NASBaseCell
-from tensorflow.contrib.slim.nets import resnet_utils
+# from tensorflow.contrib.slim.nets import resnet_utils
+from tf_slim.nets import resnet_utils
 
-arg_scope = contrib_framework.arg_scope
-slim = contrib_slim
+# arg_scope = contrib_framework.arg_scope
+arg_scope = slim.arg_scope
+# slim = contrib_slim
+
 resize_bilinear = utils.resize_bilinear
 scale_dimension = utils.scale_dimension
 
@@ -55,7 +62,7 @@ scale_dimension = utils.scale_dimension
 def config(num_conv_filters=20,
            total_training_steps=500000,
            drop_path_keep_prob=1.0):
-  return contrib_training.HParams(
+  return hp.hparams(
       # Multiplier when spatial size is reduced by 2.
       filter_scaling_rate=2.0,
       # Number of filters of the stem output tensor.
@@ -80,9 +87,12 @@ def nas_arg_scope(weight_decay=4e-5,
       'scale': True,
   }
   batch_norm = utils.get_batch_norm_fn(sync_batch_norm_method)
-  weights_regularizer = contrib_layers.l2_regularizer(weight_decay)
-  weights_initializer = contrib_layers.variance_scaling_initializer(
-      factor=1 / 3.0, mode='FAN_IN', uniform=True)
+  # weights_regularizer = contrib_layers.l2_regularizer(weight_decay)
+  weights_regularizer = slim.l2_regularizer(weight_decay)
+  weights_initializer = slim.variance_scaling_initializer(
+    factor=1 / 3.0, mode='FAN_IN', uniform=True)
+  # weights_initializer = contrib_layers.variance_scaling_initializer(
+      # factor=1 / 3.0, mode='FAN_IN', uniform=True)
   with arg_scope([slim.fully_connected, slim.conv2d, slim.separable_conv2d],
                  weights_regularizer=weights_regularizer,
                  weights_initializer=weights_initializer):
@@ -152,7 +162,7 @@ def _build_nas_base(images,
   Raises:
     ValueError: If output_stride is not a multiple of backbone output stride.
   """
-  with tf.variable_scope(scope, 'nas', [images], reuse=reuse):
+  with tf.compat.v1.variable_scope(scope, 'nas', [images], reuse=reuse):
     end_points = {}
     def add_and_check_endpoint(endpoint_name, net):
       end_points[endpoint_name] = net
@@ -238,7 +248,7 @@ def _build_nas_base(images,
       net = tf.nn.relu(net)
     if global_pool:
       # Global average pooling.
-      net = tf.reduce_mean(net, [1, 2], name='global_pool', keepdims=True)
+      net = tf.reduce_mean(input_tensor=net, axis=[1, 2], name='global_pool', keepdims=True)
     if num_classes is not None:
       net = slim.conv2d(net, num_classes, 1, activation_fn=None,
                         normalizer_fn=None, scope='logits')
@@ -269,9 +279,9 @@ def pnasnet(images,
     hparams.set_hparam('total_training_steps',
                        nas_training_hyper_parameters['total_training_steps'])
   if not is_training:
-    tf.logging.info('During inference, setting drop_path_keep_prob = 1.0.')
+    tf.compat.v1.logging.info('During inference, setting drop_path_keep_prob = 1.0.')
     hparams.set_hparam('drop_path_keep_prob', 1.0)
-  tf.logging.info(hparams)
+  tf.compat.v1.logging.info(hparams)
   if output_stride == 8:
     backbone = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
   elif output_stride == 16:
@@ -329,9 +339,9 @@ def hnasnet(images,
     hparams.set_hparam('total_training_steps',
                        nas_training_hyper_parameters['total_training_steps'])
   if not is_training:
-    tf.logging.info('During inference, setting drop_path_keep_prob = 1.0.')
+    tf.compat.v1.logging.info('During inference, setting drop_path_keep_prob = 1.0.')
     hparams.set_hparam('drop_path_keep_prob', 1.0)
-  tf.logging.info(hparams)
+  tf.compat.v1.logging.info(hparams)
   operations = [
       'atrous_5x5', 'separable_3x3_2', 'separable_3x3_2', 'atrous_3x3',
       'separable_3x3_2', 'separable_3x3_2', 'separable_5x5_2',

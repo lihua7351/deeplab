@@ -30,18 +30,22 @@ from __future__ import print_function
 import functools
 from six.moves import range
 import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+tf.compat.v1.disable_v2_behavior()
+import tf_slim as slim
+# from tensorflow.contrib import slim as contrib_slim
+
 from deeplab.core import conv2d_ws
 from deeplab.core import utils
-from tensorflow.contrib.slim.nets import resnet_utils
-
-slim = contrib_slim
+# from tensorflow.contrib.slim.nets import resnet_utils
+from tf_slim.nets import resnet_utils
+from tf_slim.ops.arg_scope import add_arg_scope
+# slim = contrib_slim
 
 _DEFAULT_MULTI_GRID = [1, 1, 1]
 _DEFAULT_MULTI_GRID_RESNET_18 = [1, 1]
 
 
-@slim.add_arg_scope
+@add_arg_scope
 def bottleneck(inputs,
                depth,
                depth_bottleneck,
@@ -73,7 +77,7 @@ def bottleneck(inputs,
   Returns:
     The ResNet unit's output.
   """
-  with tf.variable_scope(scope, 'bottleneck_v1', [inputs]) as sc:
+  with tf.compat.v1.variable_scope(scope, 'bottleneck_v1', [inputs]) as sc:
     depth_in = slim.utils.last_dimension(inputs.get_shape(), min_rank=4)
     if depth == depth_in:
       shortcut = resnet_utils.subsample(inputs, stride, 'shortcut')
@@ -98,7 +102,7 @@ def bottleneck(inputs,
                                             output)
 
 
-@slim.add_arg_scope
+@add_arg_scope
 def lite_bottleneck(inputs,
                     depth,
                     stride,
@@ -128,7 +132,7 @@ def lite_bottleneck(inputs,
   Returns:
     The ResNet unit's output.
   """
-  with tf.variable_scope(scope, 'lite_bottleneck_v1', [inputs]) as sc:
+  with tf.compat.v1.variable_scope(scope, 'lite_bottleneck_v1', [inputs]) as sc:
     depth_in = slim.utils.last_dimension(inputs.get_shape(), min_rank=4)
     if depth == depth_in:
       shortcut = resnet_utils.subsample(inputs, stride, 'shortcut')
@@ -238,7 +242,7 @@ def resnet_v1_beta(inputs,
                                       stride=2,
                                       scope='conv1')
   batch_norm = utils.get_batch_norm_fn(sync_batch_norm_method)
-  with tf.variable_scope(scope, 'resnet_v1', [inputs], reuse=reuse) as sc:
+  with tf.compat.v1.variable_scope(scope, 'resnet_v1', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     with slim.arg_scope([
         conv2d_ws.conv2d, bottleneck, lite_bottleneck,
@@ -261,7 +265,7 @@ def resnet_v1_beta(inputs,
 
         if global_pool:
           # Global average pooling.
-          net = tf.reduce_mean(net, [1, 2], name='pool5', keepdims=True)
+          net = tf.reduce_mean(input_tensor=net, axis=[1, 2], name='pool5', keepdims=True)
         if num_classes is not None:
           net = conv2d_ws.conv2d(net, num_classes, [1, 1], activation_fn=None,
                                  normalizer_fn=None, scope='logits',

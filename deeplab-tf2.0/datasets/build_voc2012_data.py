@@ -60,24 +60,25 @@ import sys
 import build_data
 from six.moves import range
 import tensorflow as tf
+tf.compat.v1.disable_v2_behavior()
 
-FLAGS = tf.app.flags.FLAGS
+FLAGS = tf.compat.v1.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('image_folder',
+tf.compat.v1.app.flags.DEFINE_string('image_folder',
                            './VOCdevkit/VOC2012/JPEGImages',
                            'Folder containing images.')
 
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'semantic_segmentation_folder',
     './VOCdevkit/VOC2012/SegmentationClassRaw',
     'Folder containing semantic segmentation annotations.')
 
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'list_folder',
     './VOCdevkit/VOC2012/ImageSets/Segmentation',
     'Folder containing lists for training and validation')
 
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'output_dir',
     './tfrecord',
     'Path to save converted SSTable of TensorFlow examples.')
@@ -108,7 +109,7 @@ def _convert_dataset(dataset_split):
     output_filename = os.path.join(
         FLAGS.output_dir,
         '%s-%05d-of-%05d.tfrecord' % (dataset, shard_id, _NUM_SHARDS))
-    with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+    with tf.io.TFRecordWriter(output_filename) as tfrecord_writer:
       start_idx = shard_id * num_per_shard
       end_idx = min((shard_id + 1) * num_per_shard, num_images)
       for i in range(start_idx, end_idx):
@@ -118,13 +119,13 @@ def _convert_dataset(dataset_split):
         # Read the image.
         image_filename = os.path.join(
             FLAGS.image_folder, filenames[i] + '.' + FLAGS.image_format)
-        image_data = tf.gfile.GFile(image_filename, 'rb').read()
+        image_data = tf.io.gfile.GFile(image_filename, 'rb').read()
         height, width = image_reader.read_image_dims(image_data)
         # Read the semantic segmentation annotation.
         seg_filename = os.path.join(
             FLAGS.semantic_segmentation_folder,
             filenames[i] + '.' + FLAGS.label_format)
-        seg_data = tf.gfile.GFile(seg_filename, 'rb').read()
+        seg_data = tf.io.gfile.GFile(seg_filename, 'rb').read()
         seg_height, seg_width = label_reader.read_image_dims(seg_data)
         if height != seg_height or width != seg_width:
           raise RuntimeError('Shape mismatched between image and label.')
@@ -137,10 +138,10 @@ def _convert_dataset(dataset_split):
 
 
 def main(unused_argv):
-  dataset_splits = tf.gfile.Glob(os.path.join(FLAGS.list_folder, '*.txt'))
+  dataset_splits = tf.io.gfile.glob(os.path.join(FLAGS.list_folder, '*.txt'))
   for dataset_split in dataset_splits:
     _convert_dataset(dataset_split)
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf.compat.v1.app.run()

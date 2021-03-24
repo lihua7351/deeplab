@@ -21,15 +21,20 @@ See model.py for more details and usage.
 import numpy as np
 import six
 import tensorflow as tf
-from tensorflow.contrib import metrics as contrib_metrics
-from tensorflow.contrib import quantize as contrib_quantize
-from tensorflow.contrib import tfprof as contrib_tfprof
-from tensorflow.contrib import training as contrib_training
+# import tensorflow.compat.v1 as tf
+# tf.disable_eager_execution()
+tf.compat.v1.disable_v2_behavior()
+from tensorflow_core.python.eager import profiler
+# from tensorflow.contrib import metrics as contrib_metrics
+# from tensorflow.contrib import quantize as contrib_quantize
+# from tensorflow.contrib import tfprof as contrib_tfprof
+# from tensorflow.contrib import training as contrib_training
 from deeplab import common
 from deeplab import model
 from deeplab.datasets import data_generator
-
-flags = tf.app.flags
+import tf_slim as slim
+from tf_slim.training import evaluation
+flags = tf.compat.v1.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('master', '', 'BNS name of the tensorflow server')
@@ -88,7 +93,7 @@ flags.DEFINE_integer('max_number_of_evaluations', 0,
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
   dataset = data_generator.Dataset(
       dataset_name=FLAGS.dataset,
@@ -105,8 +110,8 @@ def main(unused_argv):
       should_shuffle=False,
       should_repeat=False)
 
-  tf.gfile.MakeDirs(FLAGS.eval_logdir)
-  tf.logging.info('Evaluating on %s set', FLAGS.eval_split)
+  tf.io.gfile.makedirs(FLAGS.eval_logdir)
+  tf.compat.v1.logging.info('Evaluating on %s set', FLAGS.eval_split)
 
   with tf.Graph().as_default():
     samples = dataset.get_one_shot_iterator().get_next()
@@ -124,11 +129,11 @@ def main(unused_argv):
          int(FLAGS.eval_crop_size[1]),
          3])
     if tuple(FLAGS.eval_scales) == (1.0,):
-      tf.logging.info('Performing single-scale test.')
+      tf.compat.v1.logging.info('Performing single-scale test.')
       predictions = model.predict_labels(samples[common.IMAGE], model_options,
                                          image_pyramid=FLAGS.image_pyramid)
     else:
-      tf.logging.info('Performing multi-scale test.')
+      tf.compat.v1.logging.info('Performing multi-scale test.')
       if FLAGS.quantize_delay_step >= 0:
         raise ValueError(
             'Quantize mode is not supported with multi-scale test.')
@@ -141,12 +146,12 @@ def main(unused_argv):
     predictions = predictions[common.OUTPUT_TYPE]
     predictions = tf.reshape(predictions, shape=[-1])
     labels = tf.reshape(samples[common.LABEL], shape=[-1])
-    weights = tf.to_float(tf.not_equal(labels, dataset.ignore_label))
+    weights = tf.cast(tf.not_equal(labels, dataset.ignore_label), dtype=tf.float32)
 
     # Set ignore_label regions to label 0, because metrics.mean_iou requires
     # range of labels = [0, dataset.num_classes). Note the ignore_label regions
     # are not evaluated since the corresponding regions contain weights = 0.
-    labels = tf.where(
+    labels = tf.compat.v1.where(
         tf.equal(labels, dataset.ignore_label), tf.zeros_like(labels), labels)
 
     predictions_tag = 'miou'
@@ -158,7 +163,7 @@ def main(unused_argv):
     # Define the evaluation metric.
     metric_map = {}
     num_classes = dataset.num_of_classes
-    metric_map['eval/%s_overall' % predictions_tag] = tf.metrics.mean_iou(
+    metric_map['eval/%s_overall' % predictions_tag] = tf.compat.v1.metrics.mean_iou(
         labels=labels, predictions=predictions, num_classes=num_classes,
         weights=weights)
     # IoU for each class.
@@ -168,33 +173,36 @@ def main(unused_argv):
     one_hot_labels = tf.reshape(one_hot_labels, [-1, num_classes])
     for c in range(num_classes):
       predictions_tag_c = '%s_class_%d' % (predictions_tag, c)
-      tp, tp_op = tf.metrics.true_positives(
+      tp, tp_op = tf.compat.v1.metrics.true_positives(
           labels=one_hot_labels[:, c], predictions=one_hot_predictions[:, c],
           weights=weights)
-      fp, fp_op = tf.metrics.false_positives(
+      fp, fp_op = tf.compat.v1.metrics.false_positives(
           labels=one_hot_labels[:, c], predictions=one_hot_predictions[:, c],
           weights=weights)
-      fn, fn_op = tf.metrics.false_negatives(
+      fn, fn_op = tf.compat.v1.metrics.false_negatives(
           labels=one_hot_labels[:, c], predictions=one_hot_predictions[:, c],
           weights=weights)
       tp_fp_fn_op = tf.group(tp_op, fp_op, fn_op)
-      iou = tf.where(tf.greater(tp + fn, 0.0),
+      iou = tf.compat.v1.where(tf.greater(tp + fn, 0.0),
                      tp / (tp + fn + fp),
                      tf.constant(np.NaN))
       metric_map['eval/%s' % predictions_tag_c] = (iou, tp_fp_fn_op)
 
     (metrics_to_values,
-     metrics_to_updates) = contrib_metrics.aggregate_metric_map(metric_map)
+     metrics_to_updates) = slim.metrics.aggregate_metric_map(metric_map)
 
     summary_ops = []
     for metric_name, metric_value in six.iteritems(metrics_to_values):
-      op = tf.summary.scalar(metric_name, metric_value)
-      op = tf.Print(op, [metric_value], metric_name)
+      op = tf.compat.v1.summary.scalar(metric_name, metric_value)
+      op = tf.compat.v1.Print(op, [metric_value], metric_name)
       summary_ops.append(op)
 
-    summary_op = tf.summary.merge(summary_ops)
-    summary_hook = contrib_training.SummaryAtEndHook(
-        log_dir=FLAGS.eval_logdir, summary_op=summary_op)
+    summary_op = tf.compat.v1.summary.merge(summary_ops)
+    summary_hook = evaluation.SummaryAtEndHook(
+      log_dir=FLAGS.eval_logdir, summary_op=summary_op
+    )
+    # summary_hook = contrib_training.SummaryAtEndHook(
+    #     log_dir=FLAGS.eval_logdir, summary_op=summary_op)
     hooks = [summary_hook]
 
     num_eval_iters = None
@@ -204,14 +212,22 @@ def main(unused_argv):
     if FLAGS.quantize_delay_step >= 0:
       contrib_quantize.create_eval_graph()
 
-    contrib_tfprof.model_analyzer.print_model_analysis(
-        tf.get_default_graph(),
-        tfprof_options=contrib_tfprof.model_analyzer
-        .TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
-    contrib_tfprof.model_analyzer.print_model_analysis(
-        tf.get_default_graph(),
-        tfprof_options=contrib_tfprof.model_analyzer.FLOAT_OPS_OPTIONS)
-    contrib_training.evaluate_repeatedly(
+    # contrib_tfprof.model_analyzer.print_model_analysis(
+    #     tf.get_default_graph(),
+    #     tfprof_options=contrib_tfprof.model_analyzer
+    #     .TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+    tf.profiler.profile(
+        tf.compat.v1.get_default_graph(),
+        tfprof_options=tf.profiler.ProfileOptionBuilder.trainable_variables_parameter())
+
+    # contrib_tfprof.model_analyzer.print_model_analysis(
+    #     tf.get_default_graph(),
+    #     tfprof_options=contrib_tfprof.model_analyzer.FLOAT_OPS_OPTIONS)
+    tf.profiler.profile(
+        tf.compat.v1.get_default_graph(),
+        tfprof_options=tf.profiler.ProfileOptionBuilder.float_operation())
+
+    slim.evaluation.evaluation_loop(
         checkpoint_dir=FLAGS.checkpoint_dir,
         master=FLAGS.master,
         eval_ops=list(metrics_to_updates.values()),
@@ -219,9 +235,17 @@ def main(unused_argv):
         hooks=hooks,
         eval_interval_secs=FLAGS.eval_interval_secs)
 
+    # contrib_training.evaluate_repeatedly(
+    #     checkpoint_dir=FLAGS.checkpoint_dir,
+    #     master=FLAGS.master,
+    #     eval_ops=list(metrics_to_updates.values()),
+    #     max_number_of_evaluations=num_eval_iters,
+    #     hooks=hooks,
+    #     eval_interval_secs=FLAGS.eval_interval_secs)
+
 
 if __name__ == '__main__':
   flags.mark_flag_as_required('checkpoint_dir')
   flags.mark_flag_as_required('eval_logdir')
   flags.mark_flag_as_required('dataset_dir')
-  tf.app.run()
+  tf.compat.v1.app.run()

@@ -23,6 +23,7 @@ import collections
 
 from six.moves import range
 import tensorflow as tf
+tf.compat.v1.disable_v2_behavior()
 
 from deeplab import common
 from deeplab.datasets import data_generator
@@ -41,7 +42,7 @@ class DatasetTest(tf.test.TestCase):
         dataset_name='pascal_voc_seg',
         split_name='val',
         dataset_dir=
-        'deeplab/testing/pascal_voc_seg',
+        '../deeplab/testing/pascal_voc_seg',
         batch_size=1,
         crop_size=[3, 3],  # Use small size for testing.
         min_resize_value=3,

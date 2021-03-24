@@ -22,6 +22,7 @@ from __future__ import print_function
 import numpy as np
 from six.moves import range
 import tensorflow as tf
+tf.compat.v1.disable_v2_behavior()
 
 from deeplab.core import preprocess_utils
 
@@ -33,7 +34,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
                               [9., 0.]],
                              [[4., 3.],
                               [3., 5.]]])
-    image = tf.convert_to_tensor(numpy_image)
+    image = tf.convert_to_tensor(value=numpy_image)
 
     with self.test_session():
       actual, is_flipped = preprocess_utils.flip_dim([image], prob=0, dim=0)
@@ -63,7 +64,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
                                [3., 5.]],
                               [[5., 6.],
                                [9., 0.]]])
-    image = tf.convert_to_tensor(numpy_image)
+    image = tf.convert_to_tensor(value=numpy_image)
 
     with self.test_session():
       actual, is_flipped = preprocess_utils.flip_dim([image], prob=1, dim=0)
@@ -89,8 +90,8 @@ class PreprocessUtilsTest(tf.test.TestCase):
                                      [5., 3.]]])
     label_dim1_flipped = np.dstack([[[1., 0.],
                                      [3., 2.]]])
-    image = tf.convert_to_tensor(numpy_image)
-    label = tf.convert_to_tensor(numpy_label)
+    image = tf.convert_to_tensor(value=numpy_image)
+    label = tf.convert_to_tensor(value=numpy_label)
 
     with self.test_session() as sess:
       image, label, is_flipped = preprocess_utils.flip_dim(
@@ -109,7 +110,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
                                [0., 9.]],
                               [[3., 4.],
                                [5., 3.]]])
-    image = tf.convert_to_tensor(numpy_image)
+    image = tf.convert_to_tensor(value=numpy_image)
     tf.compat.v1.set_random_seed(53)
 
     with self.test_session() as sess:
@@ -130,7 +131,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
 
     crop_height, crop_width = 2, 4
 
-    image_placeholder = tf.placeholder(tf.int32, shape=(None, None, 3))
+    image_placeholder = tf.compat.v1.placeholder(tf.int32, shape=(None, None, 3))
     [cropped] = preprocess_utils.random_crop([image_placeholder],
                                              crop_height,
                                              crop_width)
@@ -156,7 +157,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
     image = np.random.randint(0, 256, size=(100, 200, 3))
 
     tf.compat.v1.set_random_seed(37)
-    image_placeholder = tf.placeholder(tf.int32, shape=(None, None, 3))
+    image_placeholder = tf.compat.v1.placeholder(tf.int32, shape=(None, None, 3))
     [cropped] = preprocess_utils.random_crop(
         [image_placeholder], crop_height, crop_width)
 
@@ -169,7 +170,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
 
     crop_height, crop_width = 2, 3
     image = np.random.randint(0, 256, size=(100, 200, 3))
-    image_placeholder = tf.placeholder(tf.int32, shape=(None, None, 3))
+    image_placeholder = tf.compat.v1.placeholder(tf.int32, shape=(None, None, 3))
     [cropped] = preprocess_utils.random_crop(
         [image_placeholder], crop_height, crop_width)
 
@@ -187,8 +188,8 @@ class PreprocessUtilsTest(tf.test.TestCase):
     labels = labels.reshape((height, width, 1))
     image = np.tile(labels, (1, 1, 3))
 
-    image_placeholder = tf.placeholder(tf.int32, shape=(None, None, 3))
-    label_placeholder = tf.placeholder(tf.int32, shape=(None, None, 1))
+    image_placeholder = tf.compat.v1.placeholder(tf.int32, shape=(None, None, 3))
+    label_placeholder = tf.compat.v1.placeholder(tf.int32, shape=(None, None, 1))
     [cropped_image, cropped_label] = preprocess_utils.random_crop(
         [image_placeholder, label_placeholder], crop_height, crop_width)
 
@@ -202,8 +203,8 @@ class PreprocessUtilsTest(tf.test.TestCase):
 
   def testDieOnRandomCropWhenImagesWithDifferentWidth(self):
     crop_height, crop_width = 2, 3
-    image1 = tf.placeholder(tf.float32, name='image1', shape=(None, None, 3))
-    image2 = tf.placeholder(tf.float32, name='image2', shape=(None, None, 1))
+    image1 = tf.compat.v1.placeholder(tf.float32, name='image1', shape=(None, None, 3))
+    image2 = tf.compat.v1.placeholder(tf.float32, name='image2', shape=(None, None, 1))
     cropped = preprocess_utils.random_crop(
         [image1, image2], crop_height, crop_width)
 
@@ -214,8 +215,8 @@ class PreprocessUtilsTest(tf.test.TestCase):
 
   def testDieOnRandomCropWhenImagesWithDifferentHeight(self):
     crop_height, crop_width = 2, 3
-    image1 = tf.placeholder(tf.float32, name='image1', shape=(None, None, 3))
-    image2 = tf.placeholder(tf.float32, name='image2', shape=(None, None, 1))
+    image1 = tf.compat.v1.placeholder(tf.float32, name='image1', shape=(None, None, 3))
+    image2 = tf.compat.v1.placeholder(tf.float32, name='image2', shape=(None, None, 1))
     cropped = preprocess_utils.random_crop(
         [image1, image2], crop_height, crop_width)
 
@@ -228,8 +229,8 @@ class PreprocessUtilsTest(tf.test.TestCase):
 
   def testDieOnRandomCropWhenCropSizeIsGreaterThanImage(self):
     crop_height, crop_width = 5, 9
-    image1 = tf.placeholder(tf.float32, name='image1', shape=(None, None, 3))
-    image2 = tf.placeholder(tf.float32, name='image2', shape=(None, None, 1))
+    image1 = tf.compat.v1.placeholder(tf.float32, name='image1', shape=(None, None, 3))
+    image2 = tf.compat.v1.placeholder(tf.float32, name='image2', shape=(None, None, 1))
     cropped = preprocess_utils.random_crop(
         [image1, image2], crop_height, crop_width)
 
@@ -285,7 +286,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
                        [[4, 3],
                         [3, 5]]])
     with self.test_session():
-      image_placeholder = tf.placeholder(tf.float32)
+      image_placeholder = tf.compat.v1.placeholder(tf.float32)
       padded_image = preprocess_utils.pad_to_bounding_box(
           image_placeholder, 0, 0, 2, 1, 255)
       with self.assertRaisesWithPredicateMatch(
@@ -305,7 +306,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
                        [[4, 3],
                         [3, 5]]])
     with self.test_session():
-      image_placeholder = tf.placeholder(tf.float32)
+      image_placeholder = tf.compat.v1.placeholder(tf.float32)
       padded_image = preprocess_utils.pad_to_bounding_box(
           image_placeholder, 3, 0, 4, 4, 255)
       with self.assertRaisesWithPredicateMatch(
@@ -317,7 +318,7 @@ class PreprocessUtilsTest(tf.test.TestCase):
     image = np.vstack([[5, 6],
                        [9, 0]])
     with self.test_session():
-      image_placeholder = tf.placeholder(tf.float32)
+      image_placeholder = tf.compat.v1.placeholder(tf.float32)
       padded_image = preprocess_utils.pad_to_bounding_box(
           image_placeholder, 0, 0, 2, 2, 255)
       with self.assertRaisesWithPredicateMatch(

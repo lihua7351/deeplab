@@ -18,18 +18,19 @@
 import numpy as np
 import six
 import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
-
+tf.compat.v1.disable_v2_behavior()
+# from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 from deeplab.core import xception
-from tensorflow.contrib.slim.nets import resnet_utils
-
-slim = contrib_slim
+# from tensorflow.contrib.slim.nets import resnet_utils
+from tf_slim.nets import resnet_utils
+# slim = contrib_slim
 
 
 def create_test_input(batch, height, width, channels):
   """Create test input tensor."""
   if None in [batch, height, width, channels]:
-    return tf.placeholder(tf.float32, (batch, height, width, channels))
+    return tf.compat.v1.placeholder(tf.float32, (batch, height, width, channels))
   else:
     return tf.cast(
         np.tile(
@@ -53,11 +54,11 @@ class UtilityFunctionTest(tf.test.TestCase):
     dw = create_test_input(1, 3, 3, 1)
     dw = tf.reshape(dw, [3, 3, 1, 1])
 
-    tf.get_variable('Conv/depthwise_weights', initializer=dw)
-    tf.get_variable('Conv/pointwise_weights',
+    tf.compat.v1.get_variable('Conv/depthwise_weights', initializer=dw)
+    tf.compat.v1.get_variable('Conv/pointwise_weights',
                     initializer=tf.ones([1, 1, 1, 1]))
-    tf.get_variable('Conv/biases', initializer=tf.zeros([1]))
-    tf.get_variable_scope().reuse_variables()
+    tf.compat.v1.get_variable('Conv/biases', initializer=tf.zeros([1]))
+    tf.compat.v1.get_variable_scope().reuse_variables()
 
     y1 = slim.separable_conv2d(x, 1, [3, 3], depth_multiplier=1,
                                stride=1, scope='Conv')
@@ -84,7 +85,7 @@ class UtilityFunctionTest(tf.test.TestCase):
     y4_expected = tf.reshape(y4_expected, [1, n2, n2, 1])
 
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       self.assertAllClose(y1.eval(), y1_expected.eval())
       self.assertAllClose(y2.eval(), y2_expected.eval())
       self.assertAllClose(y3.eval(), y3_expected.eval())
@@ -100,11 +101,11 @@ class UtilityFunctionTest(tf.test.TestCase):
     dw = create_test_input(1, 3, 3, 1)
     dw = tf.reshape(dw, [3, 3, 1, 1])
 
-    tf.get_variable('Conv/depthwise_weights', initializer=dw)
-    tf.get_variable('Conv/pointwise_weights',
+    tf.compat.v1.get_variable('Conv/depthwise_weights', initializer=dw)
+    tf.compat.v1.get_variable('Conv/pointwise_weights',
                     initializer=tf.ones([1, 1, 1, 1]))
-    tf.get_variable('Conv/biases', initializer=tf.zeros([1]))
-    tf.get_variable_scope().reuse_variables()
+    tf.compat.v1.get_variable('Conv/biases', initializer=tf.zeros([1]))
+    tf.compat.v1.get_variable_scope().reuse_variables()
 
     y1 = slim.separable_conv2d(x, 1, [3, 3], depth_multiplier=1,
                                stride=1, scope='Conv')
@@ -131,7 +132,7 @@ class UtilityFunctionTest(tf.test.TestCase):
     y4_expected = y2_expected
 
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       self.assertAllClose(y1.eval(), y1_expected.eval())
       self.assertAllClose(y2.eval(), y2_expected.eval())
       self.assertAllClose(y3.eval(), y3_expected.eval())
@@ -366,7 +367,7 @@ class XceptionNetworkTest(tf.test.TestCase):
       with slim.arg_scope(xception.xception_arg_scope()):
         with tf.Graph().as_default():
           with self.test_session() as sess:
-            tf.set_random_seed(0)
+            tf.compat.v1.set_random_seed(0)
             inputs = create_test_input(2, 96, 97, 3)
             # Dense feature extraction followed by subsampling.
             output, _ = self._xception_small(
@@ -381,14 +382,14 @@ class XceptionNetworkTest(tf.test.TestCase):
               factor = nominal_stride // output_stride
             output = resnet_utils.subsample(output, factor)
             # Make the two networks use the same weights.
-            tf.get_variable_scope().reuse_variables()
+            tf.compat.v1.get_variable_scope().reuse_variables()
             # Feature extraction at the nominal network rate.
             expected, _ = self._xception_small(
                 inputs,
                 None,
                 is_training=False,
                 global_pool=False)
-            sess.run(tf.global_variables_initializer())
+            sess.run(tf.compat.v1.global_variables_initializer())
             self.assertAllClose(output.eval(), expected.eval(),
                                 atol=1e-5, rtol=1e-5)
 
@@ -409,7 +410,7 @@ class XceptionNetworkTest(tf.test.TestCase):
                          [None, 1, 1, num_classes])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(logits, {inputs: images.eval()})
       self.assertEquals(output.shape, (batch, 1, 1, num_classes))
 
@@ -427,7 +428,7 @@ class XceptionNetworkTest(tf.test.TestCase):
                          [batch, None, None, 16])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(output, {inputs: images.eval()})
       self.assertEquals(output.shape, (batch, 3, 3, 16))
 
@@ -447,7 +448,7 @@ class XceptionNetworkTest(tf.test.TestCase):
                          [batch, None, None, 16])
     images = create_test_input(batch, height, width, 3)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       output = sess.run(output, {inputs: images.eval()})
       self.assertEquals(output.shape, (batch, 9, 9, 16))
 
@@ -470,7 +471,7 @@ class XceptionNetworkTest(tf.test.TestCase):
     num_classes = 3
     output_stride = 16
     for use_bounded_activation in (True, False):
-      tf.reset_default_graph()
+      tf.compat.v1.reset_default_graph()
       inputs = create_test_input(2, 65, 65, 3)
       with slim.arg_scope(xception.xception_arg_scope(
           use_bounded_activation=use_bounded_activation)):
@@ -480,7 +481,7 @@ class XceptionNetworkTest(tf.test.TestCase):
             global_pool=global_pool,
             output_stride=output_stride,
             scope='xception')
-        for node in tf.get_default_graph().as_graph_def().node:
+        for node in tf.compat.v1.get_default_graph().as_graph_def().node:
           if node.op.startswith('Relu'):
             self.assertEqual(node.op == 'Relu6', use_bounded_activation)
 

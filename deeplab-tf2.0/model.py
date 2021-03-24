@@ -53,12 +53,15 @@ Alan L. Yuille (* equal contribution)
 (https://arxiv.org/abs/1412.7062)
 """
 import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+# import tensorflow.compat.v1 as tf
+tf.compat.v1.disable_v2_behavior()
+# from tensorflow.contrib import slim as contrib_slim
 from deeplab.core import dense_prediction_cell
 from deeplab.core import feature_extractor
 from deeplab.core import utils
 
-slim = contrib_slim
+# slim = contrib_slim
+import tf_slim as slim
 
 LOGITS_SCOPE_NAME = 'logits'
 MERGED_LOGITS_SCOPE = 'merged_logits'
@@ -121,7 +124,7 @@ def predict_labels_multi_scale(images,
   }
 
   for i, image_scale in enumerate(eval_scales):
-    with tf.variable_scope(tf.get_variable_scope(), reuse=True if i else None):
+    with tf.compat.v1.variable_scope(tf.compat.v1.get_variable_scope(), reuse=True if i else None):
       outputs_to_scales_to_logits = multi_scale_logits(
           images,
           model_options=model_options,
@@ -130,9 +133,9 @@ def predict_labels_multi_scale(images,
           fine_tune_batch_norm=False)
 
     if add_flipped_images:
-      with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+      with tf.compat.v1.variable_scope(tf.compat.v1.get_variable_scope(), reuse=True):
         outputs_to_scales_to_logits_reversed = multi_scale_logits(
-            tf.reverse_v2(images, [2]),
+            tf.reverse(images, [2]),
             model_options=model_options,
             image_pyramid=[image_scale],
             is_training=False,
@@ -142,7 +145,7 @@ def predict_labels_multi_scale(images,
       scales_to_logits = outputs_to_scales_to_logits[output]
       logits = _resize_bilinear(
           scales_to_logits[MERGED_LOGITS_SCOPE],
-          tf.shape(images)[1:3],
+          tf.shape(input=images)[1:3],
           scales_to_logits[MERGED_LOGITS_SCOPE].dtype)
       outputs_to_predictions[output].append(
           tf.expand_dims(tf.nn.softmax(logits), 4))
@@ -151,8 +154,8 @@ def predict_labels_multi_scale(images,
         scales_to_logits_reversed = (
             outputs_to_scales_to_logits_reversed[output])
         logits_reversed = _resize_bilinear(
-            tf.reverse_v2(scales_to_logits_reversed[MERGED_LOGITS_SCOPE], [2]),
-            tf.shape(images)[1:3],
+            tf.reverse(scales_to_logits_reversed[MERGED_LOGITS_SCOPE], [2]),
+            tf.shape(input=images)[1:3],
             scales_to_logits_reversed[MERGED_LOGITS_SCOPE].dtype)
         outputs_to_predictions[output].append(
             tf.expand_dims(tf.nn.softmax(logits_reversed), 4))
@@ -160,8 +163,8 @@ def predict_labels_multi_scale(images,
   for output in sorted(outputs_to_predictions):
     predictions = outputs_to_predictions[output]
     # Compute average prediction across different scales and flipped images.
-    predictions = tf.reduce_mean(tf.concat(predictions, 4), axis=4)
-    outputs_to_predictions[output] = tf.argmax(predictions, 3)
+    predictions = tf.reduce_mean(input_tensor=tf.concat(predictions, 4), axis=4)
+    outputs_to_predictions[output] = tf.argmax(input=predictions, axis=3)
     outputs_to_predictions[output + PROB_SUFFIX] = tf.nn.softmax(predictions)
 
   return outputs_to_predictions
@@ -197,22 +200,22 @@ def predict_labels(images, model_options, image_pyramid=None):
     # effect" but is computationally efficient.
     if model_options.prediction_with_upsampled_logits:
       logits = _resize_bilinear(logits,
-                                tf.shape(images)[1:3],
+                                tf.shape(input=images)[1:3],
                                 scales_to_logits[MERGED_LOGITS_SCOPE].dtype)
-      predictions[output] = tf.argmax(logits, 3)
+      predictions[output] = tf.argmax(input=logits, axis=3)
       predictions[output + PROB_SUFFIX] = tf.nn.softmax(logits)
     else:
-      argmax_results = tf.argmax(logits, 3)
-      argmax_results = tf.image.resize_nearest_neighbor(
+      argmax_results = tf.argmax(input=logits, axis=3)
+      argmax_results = tf.image.resize(
           tf.expand_dims(argmax_results, 3),
-          tf.shape(images)[1:3],
-          align_corners=True,
+          tf.shape(input=images)[1:3],
+          method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
           name='resize_prediction')
       predictions[output] = tf.squeeze(argmax_results, 3)
-      predictions[output + PROB_SUFFIX] = tf.image.resize_bilinear(
+      predictions[output + PROB_SUFFIX] = tf.image.resize(
           tf.nn.softmax(logits),
-          tf.shape(images)[1:3],
-          align_corners=True,
+          tf.shape(input=images)[1:3],
+          method=tf.image.ResizeMethod.BILINEAR,
           name='resize_prob')
   return predictions
 
@@ -261,10 +264,10 @@ def multi_scale_logits(images,
     image_pyramid = [1.0]
   crop_height = (
       model_options.crop_size[0]
-      if model_options.crop_size else tf.shape(images)[1])
+      if model_options.crop_size else tf.shape(input=images)[1])
   crop_width = (
       model_options.crop_size[1]
-      if model_options.crop_size else tf.shape(images)[2])
+      if model_options.crop_size else tf.shape(input=images)[2])
   if model_options.image_pooling_crop_size:
     image_pooling_crop_height = model_options.image_pooling_crop_size[0]
     image_pooling_crop_width = model_options.image_pooling_crop_size[1]
@@ -317,7 +320,7 @@ def multi_scale_logits(images,
         scaled_images,
         updated_options,
         weight_decay=weight_decay,
-        reuse=tf.AUTO_REUSE,
+        reuse=tf.compat.v1.AUTO_REUSE,
         is_training=is_training,
         fine_tune_batch_norm=fine_tune_batch_norm,
         nas_training_hyper_parameters=nas_training_hyper_parameters)
@@ -407,7 +410,7 @@ def extract_features(images,
     return features, end_points
   else:
     if model_options.dense_prediction_cell_config is not None:
-      tf.logging.info('Using dense prediction cell config.')
+      tf.compat.v1.logging.info('Using dense prediction cell config.')
       dense_prediction_layer = dense_prediction_cell.DensePredictionCell(
           config=model_options.dense_prediction_cell_config,
           hparams={
@@ -473,10 +476,10 @@ def extract_features(images,
                   1. / model_options.output_stride)
             else:
               # If crop_size is None, we simply do global pooling.
-              pool_height = tf.shape(features)[1]
-              pool_width = tf.shape(features)[2]
+              pool_height = tf.shape(input=features)[1]
+              pool_width = tf.shape(input=features)[2]
               image_feature = tf.reduce_mean(
-                  features, axis=[1, 2], keepdims=True)
+                  input_tensor=features, axis=[1, 2], keepdims=True)
               resize_height = pool_height
               resize_width = pool_width
             image_feature_activation_fn = tf.nn.relu
@@ -579,7 +582,7 @@ def _get_logits(images,
   if model_options.decoder_output_stride:
     crop_size = model_options.crop_size
     if crop_size is None:
-      crop_size = [tf.shape(images)[1], tf.shape(images)[2]]
+      crop_size = [tf.shape(input=images)[1], tf.shape(input=images)[2]]
     features = refine_by_decoder(
         features,
         end_points,
@@ -699,7 +702,7 @@ def refine_by_decoder(features,
       stride=1,
       reuse=reuse):
     with slim.arg_scope([batch_norm], **batch_norm_params):
-      with tf.variable_scope(DECODER_SCOPE, DECODER_SCOPE, [features]):
+      with tf.compat.v1.variable_scope(DECODER_SCOPE, DECODER_SCOPE, [features]):
         decoder_features = features
         decoder_stage = 0
         scope_suffix = ''
@@ -889,9 +892,9 @@ def get_branch_logits(features,
   with slim.arg_scope(
       [slim.conv2d],
       weights_regularizer=slim.l2_regularizer(weight_decay),
-      weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
+      weights_initializer=tf.compat.v1.truncated_normal_initializer(stddev=0.01),
       reuse=reuse):
-    with tf.variable_scope(LOGITS_SCOPE_NAME, LOGITS_SCOPE_NAME, [features]):
+    with tf.compat.v1.variable_scope(LOGITS_SCOPE_NAME, LOGITS_SCOPE_NAME, [features]):
       branch_logits = []
       for i, rate in enumerate(atrous_rates):
         scope = scope_suffix

@@ -17,15 +17,17 @@
 
 import six
 import tensorflow as tf
-from tensorflow.contrib import framework as contrib_framework
-
+# import tensorflow.compat.v1 as tf
+tf.compat.v1.disable_v2_behavior()
+# from tensorflow.contrib import framework as contrib_framework
+import tf_slim as slim
 from deeplab.core import preprocess_utils
 from deeplab.core import utils
 
 
 def _div_maybe_zero(total_loss, num_present):
   """Normalizes the total loss with the number of present pixels."""
-  return tf.to_float(num_present > 0) * tf.math.divide(
+  return tf.cast(num_present > 0, dtype=tf.float32) * tf.math.divide(
       total_loss,
       tf.maximum(1e-5, num_present))
 
@@ -86,10 +88,10 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
 
     if upsample_logits:
       # Label is not downsampled, and instead we upsample logits.
-      logits = tf.image.resize_bilinear(
+      logits = tf.image.resize(
           logits,
           preprocess_utils.resolve_shape(labels, 4)[1:3],
-          align_corners=True)
+          method=tf.image.ResizeMethod.BILINEAR)
       scaled_labels = labels
     else:
       # Label is downsampled to the same size as logits.
@@ -100,13 +102,13 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
       # TODO(huizhongc): Change to bilinear interpolation by processing padded
       # and non-padded label separately.
       if gt_is_matting_map:
-        tf.logging.warning(
+        tf.compat.v1.logging.warning(
             'Label downsampling with nearest neighbor may introduce artifacts.')
 
-      scaled_labels = tf.image.resize_nearest_neighbor(
+      scaled_labels = tf.image.resize(
           labels,
           preprocess_utils.resolve_shape(logits, 4)[1:3],
-          align_corners=True)
+          method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
     scaled_labels = tf.reshape(scaled_labels, shape=[-1])
     weights = utils.get_label_weight_mask(
@@ -141,10 +143,10 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
     default_loss_scope = ('softmax_all_pixel_loss'
                           if top_k_percent_pixels == 1.0 else
                           'softmax_hard_example_mining')
-    with tf.name_scope(loss_scope, default_loss_scope,
+    with tf.compat.v1.name_scope(loss_scope, default_loss_scope,
                        [logits, train_labels, weights]):
       # Compute the loss for all pixels.
-      pixel_losses = tf.nn.softmax_cross_entropy_with_logits_v2(
+      pixel_losses = tf.compat.v1.nn.softmax_cross_entropy_with_logits_v2(
           labels=tf.stop_gradient(
               train_labels, name='train_labels_stop_gradient'),
           logits=logits,
@@ -152,31 +154,31 @@ def add_softmax_cross_entropy_loss_for_each_scale(scales_to_logits,
       weighted_pixel_losses = tf.multiply(pixel_losses, weights)
 
       if top_k_percent_pixels == 1.0:
-        total_loss = tf.reduce_sum(weighted_pixel_losses)
-        num_present = tf.reduce_sum(keep_mask)
+        total_loss = tf.reduce_sum(input_tensor=weighted_pixel_losses)
+        num_present = tf.reduce_sum(input_tensor=keep_mask)
         loss = _div_maybe_zero(total_loss, num_present)
-        tf.losses.add_loss(loss)
+        tf.compat.v1.losses.add_loss(loss)
       else:
-        num_pixels = tf.to_float(tf.shape(logits)[0])
+        num_pixels = tf.cast(tf.shape(input=logits)[0], dtype=tf.float32)
         # Compute the top_k_percent pixels based on current training step.
         if hard_example_mining_step == 0:
           # Directly focus on the top_k pixels.
-          top_k_pixels = tf.to_int32(top_k_percent_pixels * num_pixels)
+          top_k_pixels = tf.cast(top_k_percent_pixels * num_pixels, dtype=tf.int32)
         else:
           # Gradually reduce the mining percent to top_k_percent_pixels.
-          global_step = tf.to_float(tf.train.get_or_create_global_step())
+          global_step = tf.cast(tf.compat.v1.train.get_or_create_global_step(), dtype=tf.float32)
           ratio = tf.minimum(1.0, global_step / hard_example_mining_step)
-          top_k_pixels = tf.to_int32(
-              (ratio * top_k_percent_pixels + (1.0 - ratio)) * num_pixels)
+          top_k_pixels = tf.cast(
+              (ratio * top_k_percent_pixels + (1.0 - ratio)) * num_pixels, dtype=tf.int32)
         top_k_losses, _ = tf.nn.top_k(weighted_pixel_losses,
                                       k=top_k_pixels,
                                       sorted=True,
                                       name='top_k_percent_pixels')
-        total_loss = tf.reduce_sum(top_k_losses)
+        total_loss = tf.reduce_sum(input_tensor=top_k_losses)
         num_present = tf.reduce_sum(
-            tf.to_float(tf.not_equal(top_k_losses, 0.0)))
+            input_tensor=tf.cast(tf.not_equal(top_k_losses, 0.0), dtype=tf.float32))
         loss = _div_maybe_zero(total_loss, num_present)
-        tf.losses.add_loss(loss)
+        tf.compat.v1.losses.add_loss(loss)
 
 
 def get_model_init_fn(train_logdir,
@@ -197,29 +199,31 @@ def get_model_init_fn(train_logdir,
     Initialization function.
   """
   if tf_initial_checkpoint is None:
-    tf.logging.info('Not initializing the model from a checkpoint.')
+    tf.compat.v1.logging.info('Not initializing the model from a checkpoint.')
     return None
 
   if tf.train.latest_checkpoint(train_logdir):
-    tf.logging.info('Ignoring initialization; other checkpoint exists')
+    tf.compat.v1.logging.info('Ignoring initialization; other checkpoint exists')
     return None
 
-  tf.logging.info('Initializing model from path: %s', tf_initial_checkpoint)
+  tf.compat.v1.logging.info('Initializing model from path: %s', tf_initial_checkpoint)
 
   # Variables that will not be restored.
   exclude_list = ['global_step']
   if not initialize_last_layer:
     exclude_list.extend(last_layers)
-
-  variables_to_restore = contrib_framework.get_variables_to_restore(
+  
+  variables_to_restore = slim.get_variables_to_restore(
       exclude=exclude_list)
+# variables_to_restore = contrib_framework.get_variables_to_restore(
+      # exclude=exclude_list)
 
   if variables_to_restore:
-    init_op, init_feed_dict = contrib_framework.assign_from_checkpoint(
+    init_op, init_feed_dict = slim.assign_from_checkpoint(
         tf_initial_checkpoint,
         variables_to_restore,
         ignore_missing_vars=ignore_missing_vars)
-    global_step = tf.train.get_or_create_global_step()
+    global_step = tf.compat.v1.train.get_or_create_global_step()
 
     def restore_fn(sess):
       sess.run(init_op, init_feed_dict)
@@ -248,7 +252,7 @@ def get_model_gradient_multipliers(last_layers, last_layer_gradient_multiplier):
   """
   gradient_multipliers = {}
 
-  for var in tf.model_variables():
+  for var in tf.compat.v1.model_variables():
     # Double the learning rate for biases.
     if 'biases' in var.op.name:
       gradient_multipliers[var.op.name] = 2.
@@ -321,27 +325,27 @@ def get_model_learning_rate(learning_policy,
     ValueError: If `boundaries` and `boundary_learning_rates` are not set for
       multi_steps learning rate decay.
   """
-  global_step = tf.train.get_or_create_global_step()
+  global_step = tf.compat.v1.train.get_or_create_global_step()
   adjusted_global_step = tf.maximum(global_step - slow_start_step, 0)
   if decay_steps == 0.0:
-    tf.logging.info('Setting decay_steps to total training steps.')
+    tf.compat.v1.logging.info('Setting decay_steps to total training steps.')
     decay_steps = training_number_of_steps - slow_start_step
   if learning_policy == 'step':
-    learning_rate = tf.train.exponential_decay(
+    learning_rate = tf.compat.v1.train.exponential_decay(
         base_learning_rate,
         adjusted_global_step,
         learning_rate_decay_step,
         learning_rate_decay_factor,
         staircase=True)
   elif learning_policy == 'poly':
-    learning_rate = tf.train.polynomial_decay(
+    learning_rate = tf.compat.v1.train.polynomial_decay(
         base_learning_rate,
         adjusted_global_step,
         decay_steps=decay_steps,
         end_learning_rate=end_learning_rate,
         power=learning_power)
   elif learning_policy == 'cosine':
-    learning_rate = tf.train.cosine_decay(
+    learning_rate = tf.compat.v1.train.cosine_decay(
         base_learning_rate,
         adjusted_global_step,
         training_number_of_steps - slow_start_step)
@@ -349,7 +353,7 @@ def get_model_learning_rate(learning_policy,
     if boundaries is None or boundary_learning_rates is None:
       raise ValueError('Must set `boundaries` and `boundary_learning_rates` '
                        'for multi_steps learning rate decay.')
-    learning_rate = tf.train.piecewise_constant_decay(
+    learning_rate = tf.compat.v1.train.piecewise_constant_decay(
         adjusted_global_step,
         boundaries,
         boundary_learning_rates)
@@ -363,10 +367,10 @@ def get_model_learning_rate(learning_policy,
     adjusted_slow_start_learning_rate = (
         slow_start_learning_rate +
         (base_learning_rate - slow_start_learning_rate) *
-        tf.to_float(global_step) / slow_start_step)
+        tf.cast(global_step, dtype=tf.float32) / slow_start_step)
   elif slow_start_burnin_type != 'none':
     raise ValueError('Unknown burnin type.')
 
   # Employ small learning rate at the first few steps for warm start.
-  return tf.where(global_step < slow_start_step,
+  return tf.compat.v1.where(global_step < slow_start_step,
                   adjusted_slow_start_learning_rate, learning_rate)

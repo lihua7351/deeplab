@@ -22,17 +22,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import six
+import random
+import numpy as np
 import tensorflow as tf
-from tensorflow.contrib import quantize as contrib_quantize
-from tensorflow.contrib import tfprof as contrib_tfprof
+import os
+# import tensorflow.compat.v1 as tf
+# tf.disable_eager_execution()
+tf.compat.v1.disable_v2_behavior()
+from tensorflow_core.python.eager import profiler
+# from tensorflow.contrib import quantize as contrib_quantize
+# from tensorflow.contrib import tfprof as contrib_tfprof
 from deeplab import common
 from deeplab import model
 from deeplab.datasets import data_generator
 from deeplab.utils import train_utils
 from deployment import model_deploy
 
-slim = tf.contrib.slim
-flags = tf.app.flags
+print("TensorFlow version: ", tf.__version__)
+# slim = tf.contrib.slim
+import tf_slim as slim
+flags = tf.compat.v1.app.flags
 FLAGS = flags.FLAGS
 
 # Settings for multi-GPUs/multi-replicas training.
@@ -123,7 +132,7 @@ flags.DEFINE_float('adam_epsilon', 1e-08, 'Adam optimizer epsilon.')
 # When fine_tune_batch_norm=True, use at least batch size larger than 12
 # (batch size more than 16 is better). Otherwise, one could use smaller batch
 # size and set fine_tune_batch_norm=False.
-flags.DEFINE_integer('train_batch_size', 8,
+flags.DEFINE_integer('train_batch_size', 2,
                      'The number of images in each batch during training.')
 
 # For weight_decay, use 0.00004 for MobileNet-V2 or Xcpetion model variants.
@@ -154,10 +163,10 @@ flags.DEFINE_string('tf_initial_checkpoint', None,
                     'The initial checkpoint in tensorflow format.')
 
 # Set to False if one does not want to re-use the trained classifier weights.
-flags.DEFINE_boolean('initialize_last_layer', True,
+flags.DEFINE_boolean('initialize_last_layer', False,
                      'Initialize the last layer.')
 
-flags.DEFINE_boolean('last_layers_contain_logits_only', False,
+flags.DEFINE_boolean('last_layers_contain_logits_only', True,
                      'Only consider logits as last layers or not.')
 
 flags.DEFINE_integer('slow_start_step', 0,
@@ -168,7 +177,7 @@ flags.DEFINE_float('slow_start_learning_rate', 1e-4,
 
 # Set to True if one wants to fine-tune the batch norm parameters in DeepLabv3.
 # Set to False and use small batch size to save GPU memory.
-flags.DEFINE_boolean('fine_tune_batch_norm', True,
+flags.DEFINE_boolean('fine_tune_batch_norm', False,
                      'Fine tune the batch norm parameters or not.')
 
 flags.DEFINE_float('min_scale_factor', 0.5,
@@ -218,6 +227,8 @@ flags.DEFINE_string('train_split', 'train',
 flags.DEFINE_string('dataset_dir', None, 'Where the dataset reside.')
 
 
+flags.DEFINE_integer('num_of_classes', 21, 'Number of classes.')
+
 def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
   """Builds a clone of DeepLab.
 
@@ -256,13 +267,16 @@ def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
   output_type_dict = outputs_to_scales_to_logits[common.OUTPUT_TYPE]
   output_type_dict[model.MERGED_LOGITS_SCOPE] = tf.identity(
       output_type_dict[model.MERGED_LOGITS_SCOPE], name=common.OUTPUT_TYPE)
-
+  
+  print('======================================')
+  print('label_weights is {}'.format(model_options.label_weights))
   for output, num_classes in six.iteritems(outputs_to_num_classes):
     train_utils.add_softmax_cross_entropy_loss_for_each_scale(
         outputs_to_scales_to_logits[output],
         samples[common.LABEL],
         num_classes,
         ignore_label,
+        # loss_weight=[float(lw) for lw in FLAGS.label_loss_weights],
         loss_weight=model_options.label_weights,
         upsample_logits=FLAGS.upsample_logits,
         hard_example_mining_step=FLAGS.hard_example_mining_step,
@@ -271,7 +285,7 @@ def _build_deeplab(iterator, outputs_to_num_classes, ignore_label):
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   # Set up deployment (i.e., multi-GPUs and/or multi-replicas).
   config = model_deploy.DeploymentConfig(
       num_clones=FLAGS.num_clones,
@@ -286,8 +300,8 @@ def main(unused_argv):
 
   clone_batch_size = FLAGS.train_batch_size // config.num_clones
 
-  tf.gfile.MakeDirs(FLAGS.train_logdir)
-  tf.logging.info('Training on %s set', FLAGS.train_split)
+  tf.io.gfile.makedirs(FLAGS.train_logdir)
+  tf.compat.v1.logging.info('Training on %s set', FLAGS.train_split)
 
   with tf.Graph().as_default() as graph:
     with tf.device(config.inputs_device()):
@@ -307,11 +321,12 @@ def main(unused_argv):
           num_readers=4,
           is_training=True,
           should_shuffle=True,
-          should_repeat=True)
+          should_repeat=True,
+          num_of_classes=FLAGS.num_of_classes)
 
     # Create the global step on the device storing the variables.
     with tf.device(config.variables_device()):
-      global_step = tf.train.get_or_create_global_step()
+      global_step = tf.compat.v1.train.get_or_create_global_step()
 
       # Define the model and create clones.
       model_fn = _build_deeplab
@@ -323,21 +338,21 @@ def main(unused_argv):
       # Gather update_ops from the first clone. These contain, for example,
       # the updates for the batch_norm variables created by model_fn.
       first_clone_scope = config.clone_scope(0)
-      update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
+      update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS, first_clone_scope)
 
     # Gather initial summaries.
-    summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
+    summaries = set(tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.SUMMARIES))
 
     # Add summaries for model variables.
-    for model_var in tf.model_variables():
-      summaries.add(tf.summary.histogram(model_var.op.name, model_var))
+    for model_var in tf.compat.v1.model_variables():
+      summaries.add(tf.compat.v1.summary.histogram(model_var.op.name, model_var))
 
     # Add summaries for images, labels, semantic predictions
     if FLAGS.save_summaries_images:
       summary_image = graph.get_tensor_by_name(
           ('%s/%s:0' % (first_clone_scope, common.IMAGE)).strip('/'))
       summaries.add(
-          tf.summary.image('samples/%s' % common.IMAGE, summary_image))
+          tf.compat.v1.summary.image('samples/%s' % common.IMAGE, summary_image))
 
       first_clone_label = graph.get_tensor_by_name(
           ('%s/%s:0' % (first_clone_scope, common.LABEL)).strip('/'))
@@ -345,20 +360,20 @@ def main(unused_argv):
       pixel_scaling = max(1, 255 // dataset.num_of_classes)
       summary_label = tf.cast(first_clone_label * pixel_scaling, tf.uint8)
       summaries.add(
-          tf.summary.image('samples/%s' % common.LABEL, summary_label))
+          tf.compat.v1.summary.image('samples/%s' % common.LABEL, summary_label))
 
       first_clone_output = graph.get_tensor_by_name(
           ('%s/%s:0' % (first_clone_scope, common.OUTPUT_TYPE)).strip('/'))
-      predictions = tf.expand_dims(tf.argmax(first_clone_output, 3), -1)
+      predictions = tf.expand_dims(tf.argmax(input=first_clone_output, axis=3), -1)
 
       summary_predictions = tf.cast(predictions * pixel_scaling, tf.uint8)
       summaries.add(
-          tf.summary.image(
+          tf.compat.v1.summary.image(
               'samples/%s' % common.OUTPUT_TYPE, summary_predictions))
 
     # Add summaries for losses.
-    for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
-      summaries.add(tf.summary.scalar('losses/%s' % loss.op.name, loss))
+    for loss in tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.LOSSES, first_clone_scope):
+      summaries.add(tf.compat.v1.summary.scalar('losses/%s' % loss.op.name, loss))
 
     # Build the optimizer based on the device specification.
     with tf.device(config.optimizer_device()):
@@ -374,12 +389,12 @@ def main(unused_argv):
           decay_steps=FLAGS.decay_steps,
           end_learning_rate=FLAGS.end_learning_rate)
 
-      summaries.add(tf.summary.scalar('learning_rate', learning_rate))
+      summaries.add(tf.compat.v1.summary.scalar('learning_rate', learning_rate))
 
       if FLAGS.optimizer == 'momentum':
-        optimizer = tf.train.MomentumOptimizer(learning_rate, FLAGS.momentum)
+        optimizer = tf.compat.v1.train.MomentumOptimizer(learning_rate, FLAGS.momentum)
       elif FLAGS.optimizer == 'adam':
-        optimizer = tf.train.AdamOptimizer(
+        optimizer = tf.compat.v1.train.AdamOptimizer(
             learning_rate=FLAGS.adam_learning_rate, epsilon=FLAGS.adam_epsilon)
       else:
         raise ValueError('Unknown optimizer')
@@ -387,16 +402,16 @@ def main(unused_argv):
     if FLAGS.quantize_delay_step >= 0:
       if FLAGS.num_clones > 1:
         raise ValueError('Quantization doesn\'t support multi-clone yet.')
-      contrib_quantize.create_training_graph(
-          quant_delay=FLAGS.quantize_delay_step)
+      # contrib_quantize.create_training_graph(
+          # quant_delay=FLAGS.quantize_delay_step)
 
     startup_delay_steps = FLAGS.task * FLAGS.startup_delay_steps
 
     with tf.device(config.variables_device()):
       total_loss, grads_and_vars = model_deploy.optimize_clones(
           clones, optimizer)
-      total_loss = tf.check_numerics(total_loss, 'Loss is inf or nan.')
-      summaries.add(tf.summary.scalar('total_loss', total_loss))
+      total_loss = tf.debugging.check_numerics(total_loss, 'Loss is inf or nan.')
+      summaries.add(tf.compat.v1.summary.scalar('total_loss', total_loss))
 
       # Modify the gradients for biases and last layer variables.
       last_layers = model.get_extra_layer_scopes(
@@ -418,47 +433,56 @@ def main(unused_argv):
     # Add the summaries from the first clone. These contain the summaries
     # created by model_fn and either optimize_clones() or _gather_clone_loss().
     summaries |= set(
-        tf.get_collection(tf.GraphKeys.SUMMARIES, first_clone_scope))
+        tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.SUMMARIES, first_clone_scope))
 
     # Merge all summaries together.
-    summary_op = tf.summary.merge(list(summaries))
+    summary_op = tf.compat.v1.summary.merge(list(summaries))
 
     # Soft placement allows placing on CPU ops without GPU implementation.
-    session_config = tf.ConfigProto(
+    session_config = tf.compat.v1.ConfigProto(
         allow_soft_placement=True, log_device_placement=False)
 
     # Start the training.
     profile_dir = FLAGS.profile_logdir
     if profile_dir is not None:
-      tf.gfile.MakeDirs(profile_dir)
+      tf.io.gfile.makedirs(profile_dir)
 
-    with contrib_tfprof.ProfileContext(
-        enabled=profile_dir is not None, profile_dir=profile_dir):
-      init_fn = None
-      if FLAGS.tf_initial_checkpoint:
-        init_fn = train_utils.get_model_init_fn(
+    # with contrib_tfprof.ProfileContext(
+    #     enabled=profile_dir is not None, profile_dir=profile_dir):
+    with profiler.Profiler(profile_dir):
+        init_fn = None
+        if FLAGS.tf_initial_checkpoint:
+            init_fn = train_utils.get_model_init_fn(
             FLAGS.train_logdir,
             FLAGS.tf_initial_checkpoint,
             FLAGS.initialize_last_layer,
             last_layers,
             ignore_missing_vars=True)
 
-      slim.learning.train(
-          train_tensor,
-          logdir=FLAGS.train_logdir,
-          log_every_n_steps=FLAGS.log_steps,
-          master=FLAGS.master,
-          number_of_steps=FLAGS.training_number_of_steps,
-          is_chief=(FLAGS.task == 0),
-          session_config=session_config,
-          startup_delay_steps=startup_delay_steps,
-          init_fn=init_fn,
-          summary_op=summary_op,
-          save_summaries_secs=FLAGS.save_summaries_secs,
-          save_interval_secs=FLAGS.save_interval_secs)
+        slim.learning.train(
+            train_tensor,
+            logdir=FLAGS.train_logdir,
+            log_every_n_steps=FLAGS.log_steps,
+            master=FLAGS.master,
+            number_of_steps=FLAGS.training_number_of_steps,
+            is_chief=(FLAGS.task == 0),
+            session_config=session_config,
+            startup_delay_steps=startup_delay_steps,
+            init_fn=init_fn,
+            summary_op=summary_op,
+            save_summaries_secs=FLAGS.save_summaries_secs,
+            save_interval_secs=FLAGS.save_interval_secs)
+
+def seed_tensorflow(seed=1234):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    tf.compat.v1.set_random_seed(seed)
 
 
 if __name__ == '__main__':
-  flags.mark_flag_as_required('train_logdir')
-  flags.mark_flag_as_required('dataset_dir')
-  tf.app.run()
+    seed_tensorflow(seed=1234)
+    flags.mark_flag_as_required('train_logdir')
+    flags.mark_flag_as_required('dataset_dir')
+    flags.mark_flag_as_required('num_of_classes')
+    tf.compat.v1.app.run()

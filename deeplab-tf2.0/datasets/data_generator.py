@@ -52,6 +52,8 @@ References:
 import collections
 import os
 import tensorflow as tf
+# import tensorflow.compat.v1 as tf
+tf.compat.v1.disable_v2_behavior()
 from deeplab import common
 from deeplab import input_preprocess
 
@@ -90,6 +92,16 @@ _PASCAL_VOC_SEG_INFORMATION = DatasetDescriptor(
     ignore_label=255,
 )
 
+_DEFINE_DEFECTIVE_SEG_INFORMATION = DatasetDescriptor(
+    splits_to_sizes={
+        'train': 3000,
+        'trainval': 4500,
+        'val': 1500,
+    },
+    num_classes=5,
+    ignore_label=255,
+)
+
 _ADE20K_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
         'train': 20210,  # num of samples in images/training
@@ -103,6 +115,7 @@ _DATASETS_INFORMATION = {
     'cityscapes': _CITYSCAPES_INFORMATION,
     'pascal_voc_seg': _PASCAL_VOC_SEG_INFORMATION,
     'ade20k': _ADE20K_INFORMATION,
+    'define_defective': _DEFINE_DEFECTIVE_SEG_INFORMATION
 }
 
 # Default file pattern of TFRecord of TensorFlow Example.
@@ -132,7 +145,8 @@ class Dataset(object):
                num_readers=1,
                is_training=False,
                should_shuffle=False,
-               should_repeat=False):
+               should_repeat=False,
+               num_of_classes=5):
     """Initializes the dataset.
 
     Args:
@@ -156,21 +170,22 @@ class Dataset(object):
       is_training: Boolean, if dataset is for training or not.
       should_shuffle: Boolean, if should shuffle the input data.
       should_repeat: Boolean, if should repeat the input data.
+      num_of_classes: Number of classes.
 
     Raises:
       ValueError: Dataset name and split name are not supported.
     """
-    if dataset_name not in _DATASETS_INFORMATION:
-      raise ValueError('The specified dataset is not supported yet.')
+    # if dataset_name not in _DATASETS_INFORMATION:
+    #   raise ValueError('The specified dataset is not supported yet.')
     self.dataset_name = dataset_name
 
-    splits_to_sizes = _DATASETS_INFORMATION[dataset_name].splits_to_sizes
+    # splits_to_sizes = _DATASETS_INFORMATION[dataset_name].splits_to_sizes
 
-    if split_name not in splits_to_sizes:
-      raise ValueError('data split name %s not recognized' % split_name)
+    # if split_name not in splits_to_sizes:
+    #   raise ValueError('data split name %s not recognized' % split_name)
 
     if model_variant is None:
-      tf.logging.warning('Please specify a model_variant. See '
+      tf.compat.v1.logging.warning('Please specify a model_variant. See '
                          'feature_extractor.network_map for supported model '
                          'variants.')
 
@@ -190,8 +205,10 @@ class Dataset(object):
     self.should_shuffle = should_shuffle
     self.should_repeat = should_repeat
 
-    self.num_of_classes = _DATASETS_INFORMATION[self.dataset_name].num_classes
-    self.ignore_label = _DATASETS_INFORMATION[self.dataset_name].ignore_label
+    self.num_of_classes = num_of_classes
+    # self.num_of_classes = _DATASETS_INFORMATION[self.dataset_name].num_classes
+    # self.ignore_label = _DATASETS_INFORMATION[self.dataset_name].ignore_label
+    self.ignore_label = 255
 
   def _parse_function(self, example_proto):
     """Function to parse the example proto.
@@ -212,28 +229,28 @@ class Dataset(object):
     # extend label if necessary.
     def _decode_image(content, channels):
       return tf.cond(
-          tf.image.is_jpeg(content),
-          lambda: tf.image.decode_jpeg(content, channels),
-          lambda: tf.image.decode_png(content, channels))
+          pred=tf.image.is_jpeg(content),
+          true_fn=lambda: tf.image.decode_jpeg(content, channels),
+          false_fn=lambda: tf.image.decode_png(content, channels))
 
     features = {
         'image/encoded':
-            tf.FixedLenFeature((), tf.string, default_value=''),
+            tf.io.FixedLenFeature((), tf.string, default_value=''),
         'image/filename':
-            tf.FixedLenFeature((), tf.string, default_value=''),
+            tf.io.FixedLenFeature((), tf.string, default_value=''),
         'image/format':
-            tf.FixedLenFeature((), tf.string, default_value='jpeg'),
+            tf.io.FixedLenFeature((), tf.string, default_value='jpeg'),
         'image/height':
-            tf.FixedLenFeature((), tf.int64, default_value=0),
+            tf.io.FixedLenFeature((), tf.int64, default_value=0),
         'image/width':
-            tf.FixedLenFeature((), tf.int64, default_value=0),
+            tf.io.FixedLenFeature((), tf.int64, default_value=0),
         'image/segmentation/class/encoded':
-            tf.FixedLenFeature((), tf.string, default_value=''),
+            tf.io.FixedLenFeature((), tf.string, default_value=''),
         'image/segmentation/class/format':
-            tf.FixedLenFeature((), tf.string, default_value='png'),
+            tf.io.FixedLenFeature((), tf.string, default_value='png'),
     }
 
-    parsed_features = tf.parse_single_example(example_proto, features)
+    parsed_features = tf.io.parse_single_example(serialized=example_proto, features=features)
 
     image = _decode_image(parsed_features['image/encoded'], channels=3)
 
@@ -336,15 +353,33 @@ class Dataset(object):
       dataset = dataset.repeat(1)
 
     dataset = dataset.batch(self.batch_size).prefetch(self.batch_size)
-    return dataset.make_one_shot_iterator()
+    return tf.compat.v1.data.make_one_shot_iterator(dataset)
 
   def _get_all_files(self):
     """Gets all the files to read data from.
+    
 
     Returns:
       A list of input files.
     """
-    file_pattern = _FILE_PATTERN
-    file_pattern = os.path.join(self.dataset_dir,
-                                file_pattern % self.split_name)
-    return tf.gfile.Glob(file_pattern)
+    
+    
+    # file_pattern = _FILE_PATTERN
+    # file_pattern = os.path.join(self.dataset_dir,
+    #                             file_pattern % self.split_name)
+    # return tf.io.gfile.glob(file_pattern)
+
+    file_patterns = []
+    dataset_dir = self.dataset_dir
+    dataset_dir = dataset_dir.split(",")
+    for i in range(len(dataset_dir)):
+      src_dir = dataset_dir[i]
+      if os.path.exists(src_dir) == False:
+        raise ValueError('The dataset_dir {} does not exist'.format(src_dir))
+      else:
+        print('reading dataset from folder {}'.format(src_dir))
+        file_pattern = os.path.join(src_dir,_FILE_PATTERN % self.split_name)
+        file_patterns.append(file_pattern)
+
+    return tf.io.gfile.glob(file_patterns)
+    

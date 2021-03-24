@@ -17,7 +17,8 @@
 """Tests for DeepLab model and some helper functions."""
 
 import tensorflow as tf
-
+# import tensorflow.compat.v1 as tf
+tf.compat.v1.disable_v2_behavior()
 from deeplab import common
 from deeplab import model
 
@@ -61,7 +62,7 @@ class DeeplabModelTest(tf.test.TestCase):
         g = tf.Graph()
         with g.as_default():
           with self.test_session(graph=g):
-            inputs = tf.random_uniform(
+            inputs = tf.random.uniform(
                 (batch_size, crop_size[0], crop_size[1], 3))
             outputs_to_scales_to_logits = model.multi_scale_logits(
                 inputs, model_options, image_pyramid=image_pyramid)
@@ -94,14 +95,14 @@ class DeeplabModelTest(tf.test.TestCase):
     g = tf.Graph()
     with g.as_default():
       with self.test_session(graph=g) as sess:
-        inputs = tf.random_uniform(
+        inputs = tf.random.uniform(
             (1, crop_size[0], crop_size[1], 3))
         outputs_to_scales_to_logits = model.multi_scale_logits(
             inputs,
             model_options,
             image_pyramid=[1.0])
 
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.compat.v1.global_variables_initializer())
         outputs_to_scales_to_logits = sess.run(outputs_to_scales_to_logits)
 
         # Check computed results for each output type.
@@ -131,7 +132,7 @@ class DeeplabModelTest(tf.test.TestCase):
     g = tf.Graph()
     with g.as_default():
       with self.test_session(graph=g):
-        inputs = tf.random_uniform(
+        inputs = tf.random.uniform(
             (batch_size, crop_size[0], crop_size[1], 3))
         outputs_to_scales_to_model_results = model.multi_scale_logits(
             inputs,

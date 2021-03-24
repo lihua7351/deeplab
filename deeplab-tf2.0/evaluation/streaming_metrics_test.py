@@ -68,10 +68,10 @@ class StreamingPanopticQualityTest(tf.test.TestCase):
     pred_instances = test_utils.read_test_image(
         'team_pred_instance.png', mode='L')
 
-    gt_class_tensor = tf.placeholder(tf.uint16)
-    gt_instance_tensor = tf.placeholder(tf.uint16)
-    pred_class_tensor = tf.placeholder(tf.uint16)
-    pred_instance_tensor = tf.placeholder(tf.uint16)
+    gt_class_tensor = tf.compat.v1.placeholder(tf.uint16)
+    gt_instance_tensor = tf.compat.v1.placeholder(tf.uint16)
+    pred_class_tensor = tf.compat.v1.placeholder(tf.uint16)
+    pred_instance_tensor = tf.compat.v1.placeholder(tf.uint16)
     qualities, update_pq = streaming_metrics.streaming_panoptic_quality(
         gt_class_tensor,
         gt_instance_tensor,
@@ -90,7 +90,7 @@ class StreamingPanopticQualityTest(tf.test.TestCase):
     }
 
     with self.session() as sess:
-      sess.run(tf.local_variables_initializer())
+      sess.run(tf.compat.v1.local_variables_initializer())
       sess.run(update_pq, feed_dict=feed_dict)
       (result_pq, result_sq, result_rq, result_total_tp, result_total_fn,
        result_total_fp) = sess.run([pq, sq, rq, total_tp, total_fn, total_fp],
@@ -161,10 +161,10 @@ class StreamingPanopticQualityTest(tf.test.TestCase):
       pred_instances.append(
           test_utils.read_test_image(test_image.pred_inst_path, mode='L'))
 
-    gt_class_tensor = tf.placeholder(tf.uint16)
-    gt_instance_tensor = tf.placeholder(tf.uint16)
-    pred_class_tensor = tf.placeholder(tf.uint16)
-    pred_instance_tensor = tf.placeholder(tf.uint16)
+    gt_class_tensor = tf.compat.v1.placeholder(tf.uint16)
+    gt_instance_tensor = tf.compat.v1.placeholder(tf.uint16)
+    pred_class_tensor = tf.compat.v1.placeholder(tf.uint16)
+    pred_instance_tensor = tf.compat.v1.placeholder(tf.uint16)
     qualities, update_pq = streaming_metrics.streaming_panoptic_quality(
         gt_class_tensor,
         gt_instance_tensor,
@@ -176,7 +176,7 @@ class StreamingPanopticQualityTest(tf.test.TestCase):
         offset=offset)
     pq, sq, rq, total_tp, total_fn, total_fp = tf.unstack(qualities, 6, axis=0)
     with self.session() as sess:
-      sess.run(tf.local_variables_initializer())
+      sess.run(tf.compat.v1.local_variables_initializer())
       for pred_class, pred_instance, gt_class, gt_instance in six.moves.zip(
           pred_classes, pred_instances, gt_classes, gt_instances):
         sess.run(
@@ -238,10 +238,10 @@ class StreamingParsingCoveringTest(tf.test.TestCase):
     pred_instances = test_utils.read_test_image(
         'team_pred_instance.png', mode='L')
 
-    gt_class_tensor = tf.placeholder(tf.uint16)
-    gt_instance_tensor = tf.placeholder(tf.uint16)
-    pred_class_tensor = tf.placeholder(tf.uint16)
-    pred_instance_tensor = tf.placeholder(tf.uint16)
+    gt_class_tensor = tf.compat.v1.placeholder(tf.uint16)
+    gt_instance_tensor = tf.compat.v1.placeholder(tf.uint16)
+    pred_class_tensor = tf.compat.v1.placeholder(tf.uint16)
+    pred_instance_tensor = tf.compat.v1.placeholder(tf.uint16)
     coverings, update_ops = streaming_metrics.streaming_parsing_covering(
         gt_class_tensor,
         gt_instance_tensor,
@@ -262,7 +262,7 @@ class StreamingParsingCoveringTest(tf.test.TestCase):
     }
 
     with self.session() as sess:
-      sess.run(tf.local_variables_initializer())
+      sess.run(tf.compat.v1.local_variables_initializer())
       sess.run(update_ops, feed_dict=feed_dict)
       (result_per_class_coverings, result_per_class_weighted_ious,
        result_per_class_gt_areas) = (
@@ -335,10 +335,10 @@ class StreamingParsingCoveringTest(tf.test.TestCase):
           test_utils.read_segmentation_with_rgb_color_map(
               test_image.pred_class_path, _CLASS_COLOR_MAP))
 
-    gt_class_tensor = tf.placeholder(tf.uint16)
-    gt_instance_tensor = tf.placeholder(tf.uint16)
-    pred_class_tensor = tf.placeholder(tf.uint16)
-    pred_instance_tensor = tf.placeholder(tf.uint16)
+    gt_class_tensor = tf.compat.v1.placeholder(tf.uint16)
+    gt_instance_tensor = tf.compat.v1.placeholder(tf.uint16)
+    pred_class_tensor = tf.compat.v1.placeholder(tf.uint16)
+    pred_instance_tensor = tf.compat.v1.placeholder(tf.uint16)
     coverings, update_ops = streaming_metrics.streaming_parsing_covering(
         gt_class_tensor,
         gt_instance_tensor,
@@ -353,7 +353,7 @@ class StreamingParsingCoveringTest(tf.test.TestCase):
         tf.unstack(coverings, num=3, axis=0))
 
     with self.session() as sess:
-      sess.run(tf.local_variables_initializer())
+      sess.run(tf.compat.v1.local_variables_initializer())
       for pred_class, pred_instance, gt_class, gt_instance in six.moves.zip(
           pred_classes, pred_instances, gt_classes, gt_instances):
         sess.run(
@@ -466,10 +466,10 @@ class StreamingParsingCoveringTest(tf.test.TestCase):
           test_utils.read_segmentation_with_rgb_color_map(
               test_image.pred_class_path, _CLASS_COLOR_MAP))
 
-    gt_class_tensor = tf.placeholder(tf.uint16)
-    gt_instance_tensor = tf.placeholder(tf.uint16)
-    pred_class_tensor = tf.placeholder(tf.uint16)
-    pred_instance_tensor = tf.placeholder(tf.uint16)
+    gt_class_tensor = tf.compat.v1.placeholder(tf.uint16)
+    gt_instance_tensor = tf.compat.v1.placeholder(tf.uint16)
+    pred_class_tensor = tf.compat.v1.placeholder(tf.uint16)
+    pred_instance_tensor = tf.compat.v1.placeholder(tf.uint16)
     coverings, update_ops = streaming_metrics.streaming_parsing_covering(
         gt_class_tensor,
         gt_instance_tensor,
@@ -484,7 +484,7 @@ class StreamingParsingCoveringTest(tf.test.TestCase):
         tf.unstack(coverings, num=3, axis=0))
 
     with self.session() as sess:
-      sess.run(tf.local_variables_initializer())
+      sess.run(tf.compat.v1.local_variables_initializer())
       for pred_class, pred_instance, gt_class, gt_instance in six.moves.zip(
           pred_classes, pred_instances, gt_classes, gt_instances):
         sess.run(

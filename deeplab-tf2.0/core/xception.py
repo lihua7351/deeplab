@@ -51,13 +51,16 @@ from __future__ import print_function
 import collections
 from six.moves import range
 import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+# from tensorflow.contrib import slim as contrib_slim
 
+tf.compat.v1.disable_v2_behavior()
+import tf_slim as slim
 from deeplab.core import utils
-from tensorflow.contrib.slim.nets import resnet_utils
+# from tensorflow.contrib.slim.nets import resnet_utils
+from tf_slim.nets import resnet_utils
 from nets.mobilenet import conv_blocks as mobilenet_v3_ops
-
-slim = contrib_slim
+from tf_slim.ops.arg_scope import add_arg_scope
+# slim = contrib_slim
 
 
 _DEFAULT_MULTI_GRID = [1, 1, 1]
@@ -95,12 +98,12 @@ def fixed_padding(inputs, kernel_size, rate=1):
   pad_total = kernel_size_effective - 1
   pad_beg = pad_total // 2
   pad_end = pad_total - pad_beg
-  padded_inputs = tf.pad(inputs, [[0, 0], [pad_beg, pad_end],
+  padded_inputs = tf.pad(tensor=inputs, paddings=[[0, 0], [pad_beg, pad_end],
                                   [pad_beg, pad_end], [0, 0]])
   return padded_inputs
 
 
-@slim.add_arg_scope
+@add_arg_scope
 def separable_conv2d_same(inputs,
                           num_outputs,
                           kernel_size,
@@ -201,7 +204,7 @@ def separable_conv2d_same(inputs,
   return outputs
 
 
-@slim.add_arg_scope
+@add_arg_scope
 def xception_module(inputs,
                     depth_list,
                     skip_connection_type,
@@ -269,7 +272,7 @@ def xception_module(inputs,
     if len(unit_rate_list) != 3:
       raise ValueError('Expect three elements in unit_rate_list.')
 
-  with tf.variable_scope(scope, 'xception_module', [inputs]) as sc:
+  with tf.compat.v1.variable_scope(scope, 'xception_module', [inputs]) as sc:
     residual = inputs
 
     def _separable_conv(features, depth, kernel_size, depth_multiplier,
@@ -344,7 +347,7 @@ def xception_module(inputs,
                                             outputs)
 
 
-@slim.add_arg_scope
+@add_arg_scope
 def stack_blocks_dense(net,
                        blocks,
                        output_stride=None,
@@ -390,11 +393,11 @@ def stack_blocks_dense(net,
   rate = 1
 
   for block in blocks:
-    with tf.variable_scope(block.scope, 'block', [net]) as sc:
+    with tf.compat.v1.variable_scope(block.scope, 'block', [net]) as sc:
       for i, unit in enumerate(block.args):
         if output_stride is not None and current_stride > output_stride:
           raise ValueError('The target output_stride cannot be reached.')
-        with tf.variable_scope('unit_%d' % (i + 1), values=[net]):
+        with tf.compat.v1.variable_scope('unit_%d' % (i + 1), values=[net]):
           # If we have reached the target output_stride, then we need to employ
           # atrous convolution with stride=1 and multiply the atrous rate by the
           # current unit's stride for use in subsequent layers.
@@ -466,7 +469,7 @@ def xception(inputs,
   Raises:
     ValueError: If the target output_stride is not valid.
   """
-  with tf.variable_scope(
+  with tf.compat.v1.variable_scope(
       scope, 'xception', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + 'end_points'
     batch_norm = utils.get_batch_norm_fn(sync_batch_norm_method)
@@ -496,7 +499,7 @@ def xception(inputs,
 
         if global_pool:
           # Global average pooling.
-          net = tf.reduce_mean(net, [1, 2], name='global_pool', keepdims=True)
+          net = tf.reduce_mean(input_tensor=net, axis=[1, 2], name='global_pool', keepdims=True)
           end_points['global_pool'] = net
         if num_classes:
           net = slim.dropout(net, keep_prob=keep_prob, is_training=is_training,
@@ -927,7 +930,7 @@ def xception_arg_scope(weight_decay=0.00004,
   batch_norm = utils.get_batch_norm_fn(sync_batch_norm_method)
   with slim.arg_scope(
       [slim.conv2d, slim.separable_conv2d],
-      weights_initializer=tf.truncated_normal_initializer(
+      weights_initializer=tf.compat.v1.truncated_normal_initializer(
           stddev=weights_initializer_stddev),
       activation_fn=activation_fn,
       normalizer_fn=batch_norm if use_batch_norm else None):
