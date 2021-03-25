@@ -23,8 +23,8 @@ import tarfile
 import zipfile
 
 from six.moves import urllib
-import tensorflow as tf
-
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 LABELS_FILENAME = 'labels.txt'
 
 

@@ -23,12 +23,11 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+import tf_slim as slim
 
 from datasets import dataset_utils
-
-slim = contrib_slim
 
 _FILE_PATTERN = 'flowers_%s_*.tfrecord'
 

@@ -32,8 +32,10 @@ import os
 import random
 import sys
 
-import tensorflow as tf
-
+from six.moves import range
+from six.moves import zip
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from datasets import dataset_utils
 
 # The URL where the Flowers data can be downloaded.
@@ -189,7 +191,8 @@ def run(dataset_dir):
 
   dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
   photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
-  class_names_to_ids = dict(zip(class_names, range(len(class_names))))
+  class_names_to_ids = dict(
+      list(zip(class_names, list(range(len(class_names))))))
 
   # Divide into train and test:
   random.seed(_RANDOM_SEED)
@@ -204,7 +207,8 @@ def run(dataset_dir):
                    dataset_dir)
 
   # Finally, write the labels file:
-  labels_to_class_names = dict(zip(range(len(class_names)), class_names))
+  labels_to_class_names = dict(
+      list(zip(list(range(len(class_names))), class_names)))
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
   _clean_up_temporary_files(dataset_dir)
