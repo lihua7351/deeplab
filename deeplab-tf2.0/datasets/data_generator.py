@@ -91,7 +91,7 @@ _PASCAL_VOC_SEG_INFORMATION = DatasetDescriptor(
     num_classes=21,
     ignore_label=255,
 )
-
+# define dataset 
 _DEFINE_DEFECTIVE_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
         'train': 3000,
