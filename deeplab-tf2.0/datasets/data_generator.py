@@ -92,13 +92,13 @@ _PASCAL_VOC_SEG_INFORMATION = DatasetDescriptor(
     ignore_label=255,
 )
 
-_BATTERY_DEFECTIVE_SEG_INFORMATION = DatasetDescriptor(
+_DEFINE_DEFECTIVE_SEG_INFORMATION = DatasetDescriptor(
     splits_to_sizes={
-        'train': 1588,
-        'trainval': 1988,
-        'val': 400,
+        'train': 3000,
+        'trainval': 4500,
+        'val': 1500,
     },
-    num_classes=8,
+    num_classes=5,
     ignore_label=255,
 )
 
@@ -115,7 +115,7 @@ _DATASETS_INFORMATION = {
     'cityscapes': _CITYSCAPES_INFORMATION,
     'pascal_voc_seg': _PASCAL_VOC_SEG_INFORMATION,
     'ade20k': _ADE20K_INFORMATION,
-    'battery_defective': _BATTERY_DEFECTIVE_SEG_INFORMATION
+    'define_defective': _DEFINE_DEFECTIVE_SEG_INFORMATION
 }
 
 # Default file pattern of TFRecord of TensorFlow Example.
@@ -146,7 +146,7 @@ class Dataset(object):
                is_training=False,
                should_shuffle=False,
                should_repeat=False,
-               num_of_classes=21):
+               num_of_classes=5):
     """Initializes the dataset.
 
     Args:
