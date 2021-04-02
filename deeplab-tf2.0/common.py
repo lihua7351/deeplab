@@ -251,6 +251,10 @@ class ModelOptions(
     label_weights = FLAGS.label_weights
     if label_weights is None:
       label_weights = 1.0
+    else:
+      label_weights = [float(lw) for lw in FLAGS.label_weights]
+    print('======================')
+    print('label_weights is {}'.format(label_weights))
     nas_architecture_options = {
         'nas_stem_output_num_conv_filters': (
             FLAGS.nas_stem_output_num_conv_filters),

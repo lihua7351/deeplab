@@ -128,14 +128,14 @@ def preprocess_image_and_label(image,
     processed_image, label = preprocess_utils.random_crop(
         [processed_image, label], crop_height, crop_width)
 
-  processed_image.set_shape([crop_height, crop_width, 3])
+  # processed_image.set_shape([crop_height, crop_width, 3])
 
   if label is not None:
     label.set_shape([crop_height, crop_width, 1])
 
-  if is_training:
-    # Randomly left-right flip the image and label.
-    processed_image, label, _ = preprocess_utils.flip_dim(
-        [processed_image, label], _PROB_OF_FLIP, dim=1)
+  # if is_training:
+  #   # Randomly left-right flip the image and label.
+  #   processed_image, label, _ = preprocess_utils.flip_dim(
+  #       [processed_image, label], _PROB_OF_FLIP, dim=1)
 
   return original_image, processed_image, label

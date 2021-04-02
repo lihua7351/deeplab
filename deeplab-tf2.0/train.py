@@ -26,10 +26,13 @@ import random
 import numpy as np
 import tensorflow as tf
 import os
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+import import_path
 # import tensorflow.compat.v1 as tf
 # tf.disable_eager_execution()
 tf.compat.v1.disable_v2_behavior()
-from tensorflow_core.python.eager import profiler
+# from tensorflow_core.python.eager import profiler
+from tensorflow.python.eager import profiler
 # from tensorflow.contrib import quantize as contrib_quantize
 # from tensorflow.contrib import tfprof as contrib_tfprof
 from deeplab import common
@@ -449,29 +452,30 @@ def main(unused_argv):
 
     # with contrib_tfprof.ProfileContext(
     #     enabled=profile_dir is not None, profile_dir=profile_dir):
-    with profiler.Profiler(profile_dir):
-        init_fn = None
-        if FLAGS.tf_initial_checkpoint:
-            init_fn = train_utils.get_model_init_fn(
-            FLAGS.train_logdir,
-            FLAGS.tf_initial_checkpoint,
-            FLAGS.initialize_last_layer,
-            last_layers,
-            ignore_missing_vars=True)
+    # with profiler.Profiler(profile_dir):
+    init_fn = None
+    if FLAGS.tf_initial_checkpoint:
 
-        slim.learning.train(
-            train_tensor,
-            logdir=FLAGS.train_logdir,
-            log_every_n_steps=FLAGS.log_steps,
-            master=FLAGS.master,
-            number_of_steps=FLAGS.training_number_of_steps,
-            is_chief=(FLAGS.task == 0),
-            session_config=session_config,
-            startup_delay_steps=startup_delay_steps,
-            init_fn=init_fn,
-            summary_op=summary_op,
-            save_summaries_secs=FLAGS.save_summaries_secs,
-            save_interval_secs=FLAGS.save_interval_secs)
+        init_fn = train_utils.get_model_init_fn(
+        FLAGS.train_logdir,
+        FLAGS.tf_initial_checkpoint,
+        FLAGS.initialize_last_layer,
+        last_layers,
+        ignore_missing_vars=True)
+
+    slim.learning.train(
+        train_tensor,
+        logdir=FLAGS.train_logdir,
+        log_every_n_steps=FLAGS.log_steps,
+        master=FLAGS.master,
+        number_of_steps=FLAGS.training_number_of_steps,
+        is_chief=(FLAGS.task == 0),
+        session_config=session_config,
+        startup_delay_steps=startup_delay_steps,
+        init_fn=init_fn,
+        summary_op=summary_op,
+        save_summaries_secs=FLAGS.save_summaries_secs,
+        save_interval_secs=FLAGS.save_interval_secs)
 
 def seed_tensorflow(seed=1234):
     random.seed(seed)

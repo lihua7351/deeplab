@@ -17,24 +17,25 @@
 
 See model.py for more details and usage.
 """
-
+import import_path
 import numpy as np
 import six
+import tfprof
 import tensorflow as tf
 # import tensorflow.compat.v1 as tf
 # tf.disable_eager_execution()
 tf.compat.v1.disable_v2_behavior()
-from tensorflow_core.python.eager import profiler
 # from tensorflow.contrib import metrics as contrib_metrics
 # from tensorflow.contrib import quantize as contrib_quantize
 # from tensorflow.contrib import tfprof as contrib_tfprof
 # from tensorflow.contrib import training as contrib_training
 from deeplab import common
 from deeplab import model
+from deeplab import model_analyzer
 from deeplab.datasets import data_generator
 import tf_slim as slim
 from tf_slim.training import evaluation
-flags = tf.compat.v1.app.flags
+flags = tf.compat.v1.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('master', '', 'BNS name of the tensorflow server')
@@ -91,6 +92,7 @@ flags.DEFINE_integer('max_number_of_evaluations', 0,
                      'Maximum number of eval iterations. Will loop '
                      'indefinitely upon nonpositive values.')
 
+flags.DEFINE_integer('num_of_classes', 21, 'Number of classes.')
 
 def main(unused_argv):
   tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
@@ -108,7 +110,8 @@ def main(unused_argv):
       num_readers=2,
       is_training=False,
       should_shuffle=False,
-      should_repeat=False)
+      should_repeat=False,
+      num_of_classes=FLAGS.num_of_classes)
 
   tf.io.gfile.makedirs(FLAGS.eval_logdir)
   tf.compat.v1.logging.info('Evaluating on %s set', FLAGS.eval_split)
@@ -203,7 +206,11 @@ def main(unused_argv):
     )
     # summary_hook = contrib_training.SummaryAtEndHook(
     #     log_dir=FLAGS.eval_logdir, summary_op=summary_op)
+
+
     hooks = [summary_hook]
+    # session_config = tf.compat.v1.ConfigProto(
+    #     allow_soft_placement=True, log_device_placement=False)
 
     num_eval_iters = None
     if FLAGS.max_number_of_evaluations > 0:
@@ -212,22 +219,19 @@ def main(unused_argv):
     if FLAGS.quantize_delay_step >= 0:
       contrib_quantize.create_eval_graph()
 
+    model_analyzer.print_model_analysis(tf.compat.v1.get_default_graph(),tfprof_options=model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+    model_analyzer.print_model_analysis(tf.compat.v1.get_default_graph(),tfprof_options=model_analyzer.FLOAT_OPS_OPTIONS)
+    
     # contrib_tfprof.model_analyzer.print_model_analysis(
     #     tf.get_default_graph(),
     #     tfprof_options=contrib_tfprof.model_analyzer
     #     .TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
-    tf.profiler.profile(
-        tf.compat.v1.get_default_graph(),
-        tfprof_options=tf.profiler.ProfileOptionBuilder.trainable_variables_parameter())
 
     # contrib_tfprof.model_analyzer.print_model_analysis(
     #     tf.get_default_graph(),
     #     tfprof_options=contrib_tfprof.model_analyzer.FLOAT_OPS_OPTIONS)
-    tf.profiler.profile(
-        tf.compat.v1.get_default_graph(),
-        tfprof_options=tf.profiler.ProfileOptionBuilder.float_operation())
-
-    slim.evaluation.evaluation_loop(
+    
+    slim.evaluation.evaluate_repeatedly(
         checkpoint_dir=FLAGS.checkpoint_dir,
         master=FLAGS.master,
         eval_ops=list(metrics_to_updates.values()),
@@ -248,4 +252,5 @@ if __name__ == '__main__':
   flags.mark_flag_as_required('checkpoint_dir')
   flags.mark_flag_as_required('eval_logdir')
   flags.mark_flag_as_required('dataset_dir')
+  flags.mark_flag_as_required('num_of_classes')
   tf.compat.v1.app.run()

@@ -98,6 +98,8 @@ flags.DEFINE_integer('max_number_of_iterations', 0,
                      'Maximum number of visualization iterations. Will loop '
                      'indefinitely upon nonpositive values.')
 
+flags.DEFINE_integer('num_of_classes', 21, 'Number of classes.')
+
 # The folder where semantic segmentation predictions are saved.
 _SEMANTIC_PREDICTION_SAVE_FOLDER = 'segmentation_results'
 
@@ -208,7 +210,8 @@ def main(unused_argv):
       model_variant=FLAGS.model_variant,
       is_training=False,
       should_shuffle=False,
-      should_repeat=False)
+      should_repeat=False,
+      num_of_classes=FLAGS.num_of_classes)
 
   train_id_to_eval_id = None
   if dataset.dataset_name == data_generator.get_cityscapes_dataset_name():
@@ -324,4 +327,5 @@ if __name__ == '__main__':
   flags.mark_flag_as_required('checkpoint_dir')
   flags.mark_flag_as_required('vis_logdir')
   flags.mark_flag_as_required('dataset_dir')
+  flags.mark_flag_as_required('num_of_classes')
   tf.compat.v1.app.run()

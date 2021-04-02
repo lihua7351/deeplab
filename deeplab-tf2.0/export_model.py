@@ -18,7 +18,7 @@
 import os
 import tensorflow as tf
 tf.compat.v1.disable_v2_behavior()
-from tensorflow.contrib import quantize as contrib_quantize
+# from tensorflow.contrib import quantize as contrib_quantize
 from tensorflow.python.tools import freeze_graph
 from deeplab import common
 from deeplab import input_preprocess
@@ -72,7 +72,7 @@ _RAW_OUTPUT_NAME = 'RawSemanticPredictions'
 # Output name of the exported probabilities.
 _OUTPUT_PROB_NAME = 'SemanticProbabilities'
 _RAW_OUTPUT_PROB_NAME = 'RawSemanticProbabilities'
-
+_OUTPUT_SINGLE_PROB = 'SegProb'
 
 def _create_input_tensors():
   """Creates and prepares input tensors for DeepLab model.
@@ -171,8 +171,12 @@ def main(unused_argv):
         semantic_probabilities, image_size, method=tf.image.ResizeMethod.BILINEAR,
         name=_OUTPUT_PROB_NAME)
 
-    if FLAGS.quantize_delay_step >= 0:
-      contrib_quantize.create_eval_graph()
+    single_prob_result = tf.reduce_max(semantic_probabilities, axis=3, keepdims=False)
+    single_prob_result = tf.cast(single_prob_result*255, tf.uint8)
+    single_prob_result = tf.identity(single_prob_result, name=_OUTPUT_SINGLE_PROB)
+
+    # if FLAGS.quantize_delay_step >= 0:
+    #   contrib_quantize.create_eval_graph()
 
     saver = tf.compat.v1.train.Saver(tf.compat.v1.all_variables())
 
@@ -183,7 +187,7 @@ def main(unused_argv):
         graph_def,
         saver.as_saver_def(),
         FLAGS.checkpoint_path,
-        _OUTPUT_NAME + ',' + _OUTPUT_PROB_NAME,
+        _OUTPUT_NAME+','+ _OUTPUT_SINGLE_PROB,
         restore_op_name=None,
         filename_tensor_name=None,
         output_graph=FLAGS.export_path,
@@ -197,4 +201,5 @@ def main(unused_argv):
 if __name__ == '__main__':
   flags.mark_flag_as_required('checkpoint_path')
   flags.mark_flag_as_required('export_path')
+  # flags.mark_flag_as_required('num_classes')
   tf.compat.v1.app.run()
