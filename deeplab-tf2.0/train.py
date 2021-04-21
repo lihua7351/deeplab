@@ -27,7 +27,6 @@ import numpy as np
 import tensorflow as tf
 import os
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-import import_path
 # import tensorflow.compat.v1 as tf
 # tf.disable_eager_execution()
 tf.compat.v1.disable_v2_behavior()

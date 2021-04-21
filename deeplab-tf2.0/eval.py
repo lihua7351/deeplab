@@ -17,10 +17,9 @@
 
 See model.py for more details and usage.
 """
-import import_path
+
 import numpy as np
 import six
-import tfprof
 import tensorflow as tf
 # import tensorflow.compat.v1 as tf
 # tf.disable_eager_execution()

@@ -42,7 +42,7 @@ flags.DEFINE_multi_integer('crop_size', [513, 513],
 # For `xception_65`, use atrous_rates = [12, 24, 36] if output_stride = 8, or
 # rates = [6, 12, 18] if output_stride = 16. For `mobilenet_v2`, use None. Note
 # one could use different atrous_rates/output_stride during training/evaluation.
-flags.DEFINE_multi_integer('atrous_rates', None,
+flags.DEFINE_multi_integer('atrous_rates', [6, 12, 18],
                            'Atrous rates for atrous spatial pyramid pooling.')
 
 flags.DEFINE_integer('output_stride', 8,
@@ -163,7 +163,7 @@ def main(unused_argv):
           label,
           label_size,
           method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-      return tf.cast(tf.squeeze(resized_label, 3), tf.int32)
+      return tf.cast(tf.squeeze(resized_label, 3), tf.uint8)
     semantic_predictions = _resize_label(semantic_predictions, image_size)
     semantic_predictions = tf.identity(semantic_predictions, name=_OUTPUT_NAME)
 
